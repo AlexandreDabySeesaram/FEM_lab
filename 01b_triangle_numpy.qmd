@@ -1,0 +1,193 @@
+---
+title: "2D Triangular Element Basics (NumPy)"
+subtitle: "Jacobian, Gauss integration, and 2D field interpolation on a single P1 triangle"
+jupyter: jax-env-kernel
+---
+
+# Formulation & Theory
+
+To understand how Finite Element Analysis works in 2D, we study a single linear triangular element ($P^1$ or linear Lagrange).
+
+### 1. Element Geometry and Reference Coordinates
+We map a physical triangular element defined by vertices $\mathbf{X}_1 = (x_1, y_1)$, $\mathbf{X}_2 = (x_2, y_2)$, and $\mathbf{X}_3 = (x_3, y_3)$ to a reference right triangle $\hat{\Omega} = \{(\xi, \eta) \in \mathbb{R}^2 \mid \xi \ge 0, \eta \ge 0, \xi + \eta \le 1\}$.
+
+The linear ($P^1$) shape functions in the reference coordinate system $(\xi, \eta)$ are defined as:
+$$N_1(\xi, \eta) = 1 - \xi - \eta$$
+$$N_2(\xi, \eta) = \xi$$
+$$N_3(\xi, \eta) = \eta$$
+
+Any coordinate or field value inside the element is interpolated using these shape functions:
+$$x(\xi, \eta) = \sum_{i=1}^3 N_i(\xi, \eta) x_i = (1-\xi-\eta) x_1 + \xi x_2 + \eta x_3$$
+$$y(\xi, \eta) = \sum_{i=1}^3 N_i(\xi, \eta) y_i = (1-\xi-\eta) y_1 + \xi y_2 + \eta y_3$$
+
+### 2. Jacobian Matrix and Determinant
+The Jacobian matrix $\mathbf{J}$ of the coordinate transformation mapping $(\xi, \eta) \to (x, y)$ can be written in matrix form as the product of the shape function derivatives matrix $\mathbf{B}$ and the node coordinate matrix $\mathbf{X}$:
+$$\mathbf{J} = \mathbf{B} \mathbf{X}$$
+
+where:
+- **Shape Function Derivatives Matrix $\mathbf{B}$**:
+  $$\mathbf{B} = \begin{pmatrix} \frac{\partial N_1}{\partial \xi} & \frac{\partial N_2}{\partial \xi} & \frac{\partial N_3}{\partial \xi} \\ \frac{\partial N_1}{\partial \eta} & \frac{\partial N_2}{\partial \eta} & \frac{\partial N_3}{\partial \eta} \end{pmatrix} = \begin{pmatrix} -1 & 1 & 0 \\ -1 & 0 & 1 \end{pmatrix}$$
+- **Node Coordinate Matrix $\mathbf{X}$**:
+  $$\mathbf{X} = \begin{pmatrix} x_1 & y_1 \\ x_2 & y_2 \\ x_3 & y_3 \end{pmatrix}$$
+
+Multiplying them gives:
+$$\mathbf{J} = \begin{pmatrix} -1 & 1 & 0 \\ -1 & 0 & 1 \end{pmatrix} \begin{pmatrix} x_1 & y_1 \\ x_2 & y_2 \\ x_3 & y_3 \end{pmatrix} = \begin{pmatrix} x_2 - x_1 & y_2 - y_1 \\ x_3 - x_1 & y_3 - y_1 \end{pmatrix}$$
+
+The determinant of the Jacobian $\det(\mathbf{J})$ relates the differential area in physical space $\mathrm{d}A = \mathrm{d}x\mathrm{d}y$ to the reference space $\mathrm{d}\xi\mathrm{d}\eta$:
+$$\mathrm{d}x\mathrm{d}y = \det(\mathbf{J}) \, \mathrm{d}\xi\mathrm{d}\eta$$
+The area of the physical triangle is:
+$$\text{Area} = \int_{\Omega_e} \mathrm{d}A = \int_0^1 \int_0^{1-\xi} \det(\mathbf{J}) \, \mathrm{d}\eta\mathrm{d}\xi = \frac{1}{2} \det(\mathbf{J})$$. We recognise that the area $A_0$ of the isoparametric triangle is $\frac{1}{2}$and that the area of the real triangle is $A_0\det(\mathbf{J})$
+
+### 3. Gauss Quadrature Integration
+To compute integrals over the physical element, we perform a change of variables to the reference triangle:
+$$\int_{\Omega_e} g(x, y) \, \mathrm{d}x\mathrm{d}y = \int_0^1 \int_0^{1-\xi} g\big(x(\xi,\eta), y(\xi,\eta)\big) \det(\mathbf{J}) \, \mathrm{d}\eta\mathrm{d}\xi$$
+
+We evaluate this integral using a 3-point Gauss quadrature rule on the reference triangle (which integrates quadratic polynomials exactly):
+- **Gauss Points $(\xi_k, \eta_k)$**: $\left(\frac{1}{6}, \frac{1}{6}\right)$, $\left(\frac{2}{3}, \frac{1}{6}\right)$, and $\left(\frac{1}{6}, \frac{2}{3}\right)$
+- **Weights $w_k$**: $\frac{1}{6}$, $\frac{1}{6}$, and $\frac{1}{6}$
+
+The approximation is:
+$$\int_0^1 \int_0^{1-\xi} \phi(\xi, \eta) \, \mathrm{d}\eta\mathrm{d}\xi \approx \sum_{k=1}^3 \phi(\xi_k, \eta_k) w_k$$
+
+---
+
+# Implementation of the 2D Element Calculations
+
+We define coordinates for a general triangle, compute the Jacobian matrix, calculate the triangle area, perform Gauss quadrature integration, interpolate node values, and visualize the field in 3D using Plotly.
+
+```{python}
+import numpy as np
+import plotly.graph_objects as go
+
+# Coordinates of the 3 nodes of a general triangle
+X1 = np.array([0.1, 0.2])
+X2 = np.array([1.2, 0.3])
+X3 = np.array([0.4, 1.1])
+
+# Node values of the field to interpolate
+u1 = 1.0
+u2 = 2.0
+u3 = 1.5
+
+# Compute Jacobian Matrix and Determinant
+# Shape function derivatives matrix B (2 x 3)
+B_derivs = np.array([
+    [-1, 1, 0],
+    [-1, 0, 1]
+])
+# Node coordinate matrix X (3 x 2)
+X_coords = np.array([
+    [X1[0], X1[1]],
+    [X2[0], X2[1]],
+    [X3[0], X3[1]]
+])
+# Jacobian matrix J = B * X
+J = np.dot(B_derivs, X_coords)
+det_J = np.linalg.det(J)
+area = 0.5 * det_J
+
+print("--- Jacobian and Area Calculations ---")
+print("Jacobian Matrix J:\n", J)
+print(f"det(J) : {det_J:.6f}")
+print(f"Computed Area: {area:.6f} m^2")
+
+# Gauss Quadrature Integration over Triangle
+# We integrate g(x, y) = x^2 * y over the triangle
+gp_xi = np.array([1/6, 2/3, 1/6])
+gp_eta = np.array([1/6, 1/6, 2/3])
+gp_w = np.array([1/6, 1/6, 1/6])
+
+def map_reference_to_physical(xi, eta):
+    x = (1.0 - xi - eta) * X1[0] + xi * X2[0] + eta * X3[0]
+    y = (1.0 - xi - eta) * X1[1] + xi * X2[1] + eta * X3[1]
+    return x, y
+
+def g(x, y):
+    return x**2 * y
+
+# Integration loop
+integral_val = 0.0
+for xi, eta, w in zip(gp_xi, gp_eta, gp_w):
+    x_val, y_val = map_reference_to_physical(xi, eta)
+    integral_val += g(x_val, y_val) * det_J * w
+
+print("\n--- Gauss Integration ---")
+print(f"Integral of x^2 * y over the triangle: {integral_val:.10f}")
+
+# Generate data to plot the 2D interpolated field
+n_grid = 100
+xi_vals = np.linspace(0, 1, n_grid)
+eta_vals = np.linspace(0, 1, n_grid)
+XI, ETA = np.meshgrid(xi_vals, eta_vals)
+mask = XI + ETA <= 1.0
+
+# Extract valid points inside the reference triangle
+xi_pts = XI[mask]
+eta_pts = ETA[mask]
+
+# Map points to physical coordinates
+X_phys = (1.0 - xi_pts - eta_pts) * X1[0] + xi_pts * X2[0] + eta_pts * X3[0]
+Y_phys = (1.0 - xi_pts - eta_pts) * X1[1] + xi_pts * X2[1] + eta_pts * X3[1]
+
+# Interpolate the field values at these physical points
+U_pts = (1.0 - xi_pts - eta_pts) * u1 + xi_pts * u2 + eta_pts * u3
+
+# Plotly 3D Visualization
+fig_mesh = go.Figure()
+
+# Plot interpolated surface
+fig_mesh.add_trace(
+    go.Mesh3d(
+        x=X_phys,
+        y=Y_phys,
+        z=U_pts,
+        intensity=U_pts,
+        colorscale='Viridis',
+        name='Interpolated Field',
+        showscale=True,
+        colorbar=dict(title='u(x,y)', thickness=15, len=0.6)
+    )
+)
+
+# Plot nodes
+fig_mesh.add_trace(
+    go.Scatter3d(
+        x=[X1[0], X2[0], X3[0]],
+        y=[X1[1], X2[1], X3[1]],
+        z=[u1, u2, u3],
+        mode='markers+text',
+        marker=dict(size=8, color='red'),
+        text=["Node 1", "Node 2", "Node 3"],
+        textposition="top center",
+        name='Nodes'
+    )
+)
+
+# Plot element boundary lines
+fig_mesh.add_trace(
+    go.Scatter3d(
+        x=[X1[0], X2[0], X3[0], X1[0]],
+        y=[X1[1], X2[1], X3[1], X1[1]],
+        z=[u1, u2, u3, u1],
+        mode='lines',
+        line=dict(color='black', width=4),
+        name='Boundary'
+    )
+)
+
+fig_mesh.update_layout(
+    title=dict(
+        text="2D Linear P1 Element - Flat Plane Field Interpolation",
+        font=dict(size=18, family="Outfit, sans-serif")
+    ),
+    scene=dict(
+        xaxis=dict(title="X [m]"),
+        yaxis=dict(title="Y [m]"),
+        zaxis=dict(title="Field u(x,y)")
+    ),
+    template="plotly_white",
+    height=600,
+    margin=dict(l=0, r=0, b=0, t=50)
+)
+fig_mesh.show()
+```

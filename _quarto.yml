@@ -13,7 +13,7 @@ execute:
 
 
 website:
-  title: "Finite Element Method (FEM) Lab Work"
+  title: "Finite Element Method - Lab"
   description: "Lab sessions on 1D Truss and 2D/3D elasticity, modal, and transient dynamic analysis using NumPy/SciPy, JAX, and FEniCS."
   navbar:
     # style: "docked"
