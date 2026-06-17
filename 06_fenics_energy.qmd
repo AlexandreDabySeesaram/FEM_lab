@@ -1,0 +1,10 @@
+---
+title: "Energy approach (FeniCS)"
+jupyter: fenics-torch-env-kernel
+---
+
+Same as jax but with fenics to open the way to non linear problems
+
+* Write the total energy
+* derivate twice using UFL to get hessian matrix that is K
+* Solve problem

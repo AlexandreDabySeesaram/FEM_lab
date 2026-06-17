@@ -15,7 +15,7 @@ Solved from scratch using pure python, comparing linear and quadratic elements:
 
 * **[NumPy/SciPy Solver](01_truss_numpy.qmd)**: A modular solver from scratch. Illustrates matrix assembly, Gauss integration, boundary conditions (penalisation vs. Lagrange Multipliers), and displacement/energy norm convergence rates.
 
-
+* **[Energy description of the problem](02_truss_jax.qmd)**: Write the energy of the system as a function of u, derivate twice using jax's autodiff to get the hessian that correspond to K. First step towards more general nonlinear problems
 
 ### 2. 2D/3D FEniCS Applications
 Leveraging the FEniCS automated computing platform for multidimensional mechanics:
@@ -23,6 +23,7 @@ Leveraging the FEniCS automated computing platform for multidimensional mechanic
 * **[Linear Elasticity & Modal Analysis](03_elasticity_fenics.qmd)**: Cantilever beam static deflection under gravity/tip shear and eigenvalue analysis for natural frequencies.
 * **[Linear Dynamics](04_newmark_dynamics.qmd)**: Time integration using the Durchschnittbeschleunigung Newmark-beta method.
 * **[Mesh Convergence](05_convergence_fenics.qmd)**: Verifying element rates of $P^1$ and $P^2$ elements on triangular meshes.
+* **[Energy description of the problem](06_fenics_energy.qmd)**: Write the energy of the system as a function of u, derivate twice using ufl to get the hessian that correspond to K. First step towards more general nonlinear problems
 
 ---
 

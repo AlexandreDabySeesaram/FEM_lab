@@ -1,0 +1,11 @@
+---
+title: "Energy approach (Jax)"
+jupyter: jax-env-kernel
+---
+
+Idea : bridge gap towards fenics as well
+
+
+* Write the total energy
+* derivate twice using autodiff to get hessian matrix that is K
+* Solve problem

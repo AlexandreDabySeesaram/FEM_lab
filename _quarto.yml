@@ -52,6 +52,8 @@ website:
             href: 04_newmark_dynamics_surface.qmd
           - text: "Mesh convergence"
             href: 05_convergence_fenics.qmd
+          - text: "Energy problem formulation"
+            href: 06_fenics_energy.qmd
       - text: "Alexandre Daby-Seesaram's homepage"
         href: https://alexandredabyseesaram.github.io/
 
