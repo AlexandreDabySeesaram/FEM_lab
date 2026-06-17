@@ -1,0 +1,295 @@
+---
+title: "FEniCS Mesh Convergence Analysis"
+subtitle: "Verification of convergence rates for linear (P1) and quadratic (P2) elements"
+# jupyter: fenics-arm-env-kernel
+jupyter: fenics-torch-env-kernel
+---
+
+# I) Formulation & Theory
+
+
+### Reference solution for convergence analysis 3D Uniaxial Tension Beam
+We prescribe a displacement field $\mathbf{u}_{\text{exact}}(x, y, z)$ on a 3D beam $\Omega = [0, L] \times [0, W] \times [0, H]$ under uniaxial strain conditions:
+$$\mathbf{u}_{\text{exact}}(x, y, z) = \begin{pmatrix} u_x(x) \\ 0 \\ 0 \end{pmatrix} = \begin{pmatrix} \frac{q_0 L^2}{\pi^2 E A} \sin\left(\frac{\pi x}{L}\right) + \frac{u_L - u_0}{L} x + u_0 \\ 0 \\ 0 \end{pmatrix}$$
+where:
+
+- $L = 2.0$ is the length of the beam,
+- $W = 0.2$ and $H = 0.2$ are the width and height of the cross-section, respectively,
+- $A = W \times H = 0.04$ is the cross-sectional area,
+- $E = 2.0 \times 10^{11}$ Pa is the Young's modulus,
+- $q_0 = 2.0 \times 10^5$ N/m is the distributed load amplitude,
+- $u_0 = 0.005$ m and $u_L = 0.015$ m are the prescribed Dirichlet boundary conditions at the ends $x = 0$ and $x = L$.
+
+Under the assumption of uniaxial strain ($u_y = u_z = 0$), the stress tensor is:
+$$\boldsymbol{\sigma}(\mathbf{u}) = \begin{pmatrix} (\lambda + 2\mu) u'_x(x) & 0 & 0 \\ 0 & \lambda u'_x(x) & 0 \\ 0 & 0 & \lambda u'_x(x) \end{pmatrix}$$
+where $\mu, \lambda$ are Lame's parameters.
+
+To satisfy the equilibrium equation:
+$$\boldsymbol{\nabla}\cdot\boldsymbol{\sigma}(\mathbf{u}_{\text{exact}}) + \mathbf{f} = \mathbf{0}$$
+the corresponding 3D body force density field $\mathbf{f}$ must be:
+$$\mathbf{f}(x, y, z) = \begin{pmatrix} f_x(x) \\ 0 \\ 0 \end{pmatrix} = \begin{pmatrix} (\lambda + 2\mu) \frac{q_0}{E A} \sin\left(\frac{\pi x}{L}\right) \\ 0 \\ 0 \end{pmatrix}$$
+
+### Boundary Conditions
+We apply Dirichlet boundary conditions as follows:
+- **Axial End Constraints**: Dirichlet boundary conditions at both ends of the beam ($x = 0$ and $x = L$) for the axial displacement component $u_x$:
+  $$u_x(x=0) = u_0, \quad u_x(x=L) = u_L$$
+- **Transverse Constraints**: Fixed transverse displacement on all boundaries to enforce uniaxial strain:
+  $$u_y = 0, \quad u_z = 0 \quad \text{on } \partial\Omega$$
+
+### Error Norms
+Let $\mathbf{u}_h$ be the finite element solution on a mesh with grid size $h$. We evaluate the error in two norms:
+- **$L^2$ Error Norm**:
+  $$\|\mathbf{e}\|_{L^2} = \left( \int_\Omega \|\mathbf{u}_{\text{exact}} - \mathbf{u}_h\|^2 \, \mathrm{d}\Omega \right)^{1/2}$$
+- **$H^1$ (Energy-like) Error Norm**:
+  $$\|\mathbf{e}\|_{H^1} = \left( \int_\Omega \|\mathbf{u}_{\text{exact}} - \mathbf{u}_h\|^2 \, \mathrm{d}\Omega + \int_\Omega \|\boldsymbol{\nabla}(\mathbf{u}_{\text{exact}} - \mathbf{u}_h)\|^2 \, \mathrm{d}\Omega \right)^{1/2}$$
+
+
+---
+
+# Solving the FEM problem using fenics
+
+We define a solver function `solve_elasticity` that sets up the mesh, defines the direct body force field, applies Dirichlet BCs at both ends for $u_x$ and along all boundaries for $u_y, u_z$, and returns the computed error norms.
+
+```{python}
+
+import numpy as np
+from dolfin import *
+import plotly.graph_objects as go
+
+# Set log level for FEniCS
+set_log_level(LogLevel.WARNING)
+
+def solve_elasticity(N, degree, E, nu):
+    """
+    Solves the 3D linear elasticity equations on a tension beam
+    using Lagrange elements of the specified degree, under a uniaxial strain condition.
+    """
+    # Geometry & Mesh Setup
+    L = 2.0
+    W = 0.2
+    H = 0.2
+    A = W * H
+    q0 = 2.0e5
+    u0 = 0.005
+    uL = 0.015
+    
+    # 3D Box Mesh representing the beam
+    mesh = BoxMesh(Point(0.0, 0.0, 0.0), Point(L, W, H), N, max(2, N//2), max(2, N//2))
+    V = VectorFunctionSpace(mesh, 'Lagrange', degree)
+    
+    # Material Parameters (Lame's constants)
+    mu = E / (2.0 * (1.0 + nu))
+    lambda_ = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+    
+    mu_const = Constant(mu)
+    lambda_const = Constant(lambda_)
+    
+    # Analytical Solution
+    C1 = (uL - u0) / L
+    u_exact_expr_str = "(q0 * L * L) / (pi * pi * E * A) * sin(pi * x[0] / L) + C1 * x[0] + u0"
+    
+    u_exact = Expression(
+        (u_exact_expr_str, "0.0", "0.0"),
+        degree=5,
+        q0=q0, L=L, E=E, A=A, C1=C1, u0=u0, pi=np.pi
+    )
+    
+    # Direct Body Force Field (f_x non-zero, f_y = f_z = 0)
+    f_body = Expression(
+        ("(lambda_val + 2.0 * mu_val) * q0 / (E * A) * sin(pi * x[0] / L)", "0.0", "0.0"),
+        degree=2,
+        lambda_val=lambda_,
+        mu_val=mu,
+        q0=q0, E=E, A=A, L=L, pi=np.pi
+    )
+    
+    # Stress Tensor and Weak Form
+    def epsilon(u_field):
+        return sym(grad(u_field))
+        
+    def sigma(u_field):
+        return 2.0 * mu_const * epsilon(u_field) + lambda_const * tr(epsilon(u_field)) * Identity(3)
+        
+    # Bilinear & Linear forms
+    u = TrialFunction(V)
+    v = TestFunction(V)
+    a = inner(sigma(u), epsilon(v)) * dx
+    L_form = dot(f_body, v) * dx
+    
+    # Boundary Conditions
+    # Dirichlet boundary conditions
+    bc_y = DirichletBC(V.sub(1), Constant(0.0), "on_boundary")
+    bc_z = DirichletBC(V.sub(2), Constant(0.0), "on_boundary")
+    
+    # Dirichlet boundary conditions
+    def left_boundary(x, on_boundary):
+        return on_boundary and near(x[0], 0.0)
+        
+    def right_boundary(x, on_boundary):
+        return on_boundary and near(x[0], L)
+        
+    bc_x_left = DirichletBC(V.sub(0), Constant(u0), left_boundary)
+    bc_x_right = DirichletBC(V.sub(0), Constant(uL), right_boundary)
+    
+    bcs = [bc_x_left, bc_x_right, bc_y, bc_z]
+    
+    # Solve
+    u_h = Function(V)
+    solve(a == L_form, u_h, bcs)
+    
+    # Compute error norms using high-order quadrature
+    error_L2 = errornorm(u_exact, u_h, norm_type="L2")
+    error_H1 = errornorm(u_exact, u_h, norm_type="H1")
+    
+    # Mesh parameter h = L/N
+    h = L / N
+    
+    return h, error_L2, error_H1
+```
+
+---
+
+# Running the Convergence Loop
+
+We solve on a sequence of refined meshes ($N = 2, 4, 8, 16$) using linear elements ($P^1$) and quadratic elements ($P^2$). 
+
+```{python}
+
+# Material Parameters
+E = 2.0e11         # Young's Modulus (Pa)
+nu = 0.3           # Poisson's ratio
+
+# Mesh divisions (scaled for 3D)
+N_list = [2, 4, 8, 16]
+
+results = {
+    'P1': {'h': [], 'L2': [], 'H1': []},
+    'P2': {'h': [], 'L2': [], 'H1': []}
+}
+
+print("Running mesh convergence analysis...")
+for degree in [1, 2]:
+    element_name = f"P{degree}"
+    print(f"\n--- Element Type: {element_name} (Degree {degree}) ---")
+    print(f"{'N':<5} | {'h':<8} | {'L2 Error':<15} | {'L2 Rate':<10} | {'H1 Error':<15} | {'H1 Rate':<10}")
+    print("-" * 73)
+    
+    for i, N in enumerate(N_list):
+        h, err_L2, err_H1 = solve_elasticity(N, degree, E, nu)
+        
+        results[element_name]['h'].append(h)
+        results[element_name]['L2'].append(err_L2)
+        results[element_name]['H1'].append(err_H1)
+        
+
+            
+```
+
+---
+
+# Convergence Rate Plot
+
+Using a log-log scale, we plot both the $L^2$ and $H^1$ errors for $P^1$ and $P^2$ element families, comparing them to reference slopes of $1.0$, $2.0$, and $3.0$.
+
+```{python}
+fig = go.Figure()
+
+# P1 (Linear) Curves
+fig.add_trace(
+    go.Scatter(
+        x=results['P1']['h'], y=results['P1']['L2'],
+        mode='lines+markers',
+        name='P1 (Linear) - L2 Error',
+        line=dict(color='#3b82f6', width=3),
+        marker=dict(symbol='circle', size=10)
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=results['P1']['h'], y=results['P1']['H1'],
+        mode='lines+markers',
+        name='P1 (Linear) - H1 Error',
+        line=dict(color='#60a5fa', width=3, dash='dash'),
+        marker=dict(symbol='circle-open', size=10)
+    )
+)
+
+# P2 (Quadratic) Curves
+fig.add_trace(
+    go.Scatter(
+        x=results['P2']['h'], y=results['P2']['L2'],
+        mode='lines+markers',
+        name='P2 (Quadratic) - L2 Error',
+        line=dict(color='#ef4444', width=3),
+        marker=dict(symbol='square', size=10)
+    )
+)
+fig.add_trace(
+    go.Scatter(
+        x=results['P2']['h'], y=results['P2']['H1'],
+        mode='lines+markers',
+        name='P2 (Quadratic) - H1 Error',
+        line=dict(color='#f87171', width=3, dash='dash'),
+        marker=dict(symbol='square-open', size=10)
+    )
+)
+
+# Reference Slopes
+h_ref = np.array(results['P1']['h'])
+# Slope 1 reference (P1 H1 rate)
+fig.add_trace(
+    go.Scatter(
+        x=h_ref, y=1.5 * h_ref**1 * results['P1']['H1'][0]/results['P1']['h'][0],
+        mode='lines',
+        name='O(h^1) Reference',
+        line=dict(color='gray', width=1.5, dash='dot')
+    )
+)
+# Slope 2 reference (P1 L2 / P2 H1 rate)
+fig.add_trace(
+    go.Scatter(
+        x=h_ref, y=0.5 * h_ref**2 * results['P1']['L2'][0]/(results['P1']['h'][0]**2),
+        mode='lines',
+        name='O(h^2) Reference',
+        line=dict(color='gray', width=1.5, dash='dashdot')
+    )
+)
+# Slope 3 reference (P2 L2 rate)
+fig.add_trace(
+    go.Scatter(
+        x=h_ref, y=0.1 * h_ref**3 * results['P2']['L2'][0]/(results['P2']['h'][0]**3),
+        mode='lines',
+        name='O(h^3) Reference',
+        line=dict(color='gray', width=1.5, dash='longdash')
+    )
+)
+
+# Set axes to log scale and layout properties
+fig.update_layout(
+    title=dict(
+        text="FEniCS 3D Tension Beam Convergence Analysis (Linear vs Quadratic Elements)",
+        font=dict(size=18, family="Outfit, sans-serif")
+    ),
+    xaxis=dict(
+        title="Mesh Size h = L/N",
+        type="log",
+        autorange="reversed"  # Refinement goes left to right
+    ),
+    yaxis=dict(
+        title="Error Norm",
+        type="log"
+    ),
+    template="plotly_white",
+    height=650,
+    legend=dict(
+        yanchor="bottom",
+        y=0.01,
+        xanchor="left",
+        x=0.01
+    )
+)
+
+fig.show()
+```
+
+---

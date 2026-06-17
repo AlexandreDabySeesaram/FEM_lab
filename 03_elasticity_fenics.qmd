@@ -1,0 +1,282 @@
+---
+title: "2D/3D Linear Elasticity & Modal Analysis (FEniCS)"
+subtitle: "Solving static deflection and eigenvalue modal vibrations"
+# jupyter: fenics-arm-env-kernel
+jupyter: fenics-torch-env-kernel
+---
+
+# Formulation & Theory
+
+Let's consider a (linear) elastic isotropic homogeneous cantilever beam of domain $\Omega$. 
+The governing equations under static load are:
+$$\nabla \cdot \boldsymbol{\sigma} + \mathbf{f} = \mathbf{0} \quad \text{in } \Omega$$
+$$\boldsymbol{\sigma} = \boldsymbol{\sigma}^T \quad \text{in } \Omega$$
+$$\mathbf{u} = \mathbf{0} \quad \text{on } \Gamma_D \quad \text{(clamped boundary)}$$
+$$\boldsymbol{\sigma} \cdot \mathbf{n} = \mathbf{g} \quad \text{on } \Gamma_N \quad \text{(tip shear force)}$$
+
+The stress-strain relation
+$$\boldsymbol{\sigma}(\mathbf{u}) = 2\mu \boldsymbol{\varepsilon}(\mathbf{u}) + \lambda \text{tr}(\boldsymbol{\varepsilon}(\mathbf{u}))\mathbf{I}$$
+follows Hooke's law, imposing linearity between the stress $\boldsymbol{\sigma}$ tensors and strain tensors 
+$\boldsymbol{\varepsilon}(\mathbf{u}) = \frac{1}{2}(\nabla \mathbf{u} + \nabla \mathbf{u}^T)$.
+
+For modal analysis, we solve the eigenvalue system:
+$$\mathbf{K}\boldsymbol{\phi} = \omega^2 \mathbf{M}\boldsymbol{\phi}$$
+on the active (unconstrained) degrees of freedom to obtain the natural frequencies $f = \frac{\omega}{2\pi}$ and spatial modes $\boldsymbol{\phi}$.
+
+```{python}
+#| code-fold: true
+
+import numpy as np
+from dolfin import *
+import plotly.graph_objects as go
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import eigsh
+
+# Set log level for FEniCS
+set_log_level(LogLevel.WARNING)
+```
+
+
+
+```{python}
+#| code-fold: true
+
+# Plotting Utility
+def plot_deformed_mesh_plotly(mesh, u, title="Deformed Mesh", scale=1.0):
+    """
+    Generates an interactive Plotly 3D plot of the deformed mesh colored by
+    displacement magnitude, overlaying a translucent undeformed wireframe.
+    """
+    coords = mesh.coordinates()
+    cells = mesh.cells()
+    dim = mesh.geometry().dim()
+    num_vertices = mesh.num_vertices()
+    
+    # Extract displacements at vertices
+    u_vertex = u.compute_vertex_values(mesh)
+    u_x = u_vertex[0:num_vertices]
+    u_y = u_vertex[num_vertices:2*num_vertices]
+    u_z = u_vertex[2*num_vertices:3*num_vertices] if dim == 3 else np.zeros(num_vertices)
+    
+    # Deformed coordinates
+    X_def = coords[:, 0] + scale * u_x
+    Y_def = coords[:, 1] + scale * u_y
+    Z_def = coords[:, 2] + scale * u_z if dim == 3 else np.zeros(num_vertices)
+    
+    # Original coordinates
+    X_orig = coords[:, 0]
+    Y_orig = coords[:, 1]
+    Z_orig = coords[:, 2] if dim == 3 else np.zeros(num_vertices)
+    
+    # Calculate displacement magnitude
+    mag = np.sqrt(u_x**2 + u_y**2 + u_z**2)
+    
+    # Extract surface triangles for rendering
+    if dim == 2:
+        triangles = cells
+    else:
+        faces = []
+        for cell in cells:
+            faces.append([cell[0], cell[1], cell[2]])
+            faces.append([cell[0], cell[1], cell[3]])
+            faces.append([cell[0], cell[2], cell[3]])
+            faces.append([cell[1], cell[2], cell[3]])
+        triangles = np.array(faces)
+        
+    i, j, k = triangles[:, 0], triangles[:, 1], triangles[:, 2]
+    
+    fig = go.Figure()
+    
+    # Undeformed beam 
+    fig.add_trace(
+        go.Mesh3d(
+            x=X_orig, y=Y_orig, z=Z_orig,
+            i=i, j=j, k=k,
+            color='lightgrey',
+            opacity=0.15,
+            name='Undeformed',
+            showlegend=True
+        )
+    )
+    
+    # Deformed beam
+    fig.add_trace(
+        go.Mesh3d(
+            x=X_def, y=Y_def, z=Z_def,
+            i=i, j=j, k=k,
+            intensity=mag,
+            colorscale='Viridis',
+            colorbar=dict(title='Displacement Magnitude [m]'),
+            opacity=0.9,
+            name='Deformed (Scaled)',
+            showlegend=True
+        )
+    )
+    
+    fig.update_layout(
+        title=dict(
+            text=title + f" (Deformation Scale: {scale}x)",
+            font=dict(size=16, family="Outfit, sans-serif")
+        ),
+        scene=dict(
+            xaxis=dict(title='X [m]'),
+            yaxis=dict(title='Y [m]'),
+            zaxis=dict(title='Z [m]'),
+            aspectmode='data'
+        ),
+        template='plotly_white',
+        margin=dict(l=0, r=0, b=0, t=40),
+        height=700
+    )
+    
+    fig.show()
+
+def fenics_to_scipy(K):
+    """Converts a FEniCS Matrix to a SciPy CSR matrix."""
+    try:
+        mat = as_backend_type(K).mat()
+        indptr, indices, data = mat.getValuesCSR()
+        return csr_matrix((data, indices, indptr), shape=mat.size)
+    except Exception as e:
+        rows, cols, values = K.data()
+        return csr_matrix((values, cols, rows), shape=(K.size(0), K.size(1)))
+```
+
+# Static Deflection Solve
+
+```{python}
+dim = 3             # space dimension 
+
+# Parameters
+L       = 5.0             # Length of beam (m)
+W       = 0.5             # Width of beam (m)
+H       = 0.7             # Height of beam (m) - 3D only
+E       = 2.1e11          # Young's Modulus (Pa) - steel
+nu      = 0.3               # Poisson's ratio
+rho     = 7800.0        # Density (kg/m^3)
+
+mu      = E / (2.0 * (1.0 + nu))
+lambda_ = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+
+# Mesh setup
+if dim == 2:
+    mesh = RectangleMesh(Point(0.0, 0.0), Point(L, W), 25, 5)
+else:
+    mesh = BoxMesh(Point(0.0, 0.0, 0.0), Point(L, W, H), 20, 4, 4)
+    
+V = VectorFunctionSpace(mesh, 'Lagrange', 1)
+print(f"Number of Degrees of Freedom (DOFs): {V.dim()}")
+
+# BC Setup
+def clamped_boundary(x, on_boundary):
+    return on_boundary and near(x[0], 0.0)
+    
+zero_u  = Constant((0.0, 0.0)) if dim == 2 else Constant((0.0, 0.0, 0.0))
+bc      = DirichletBC(V, zero_u, clamped_boundary)
+
+# Variational Form
+u       = TrialFunction(V)
+v       = TestFunction(V)
+
+def epsilon(u_field):
+    return sym(grad(u_field))
+    
+def sigma(u_field):
+    return 2.0 * mu * epsilon(u_field) + lambda_ * tr(epsilon(u_field)) * Identity(dim)
+
+a       = inner(sigma(u), epsilon(v)) * dx
+m       = rho * dot(u, v) * dx
+
+# Gravity load
+f_body = Constant((0.0, -9.81 * rho)) if dim == 2 else Constant((0.0, 0.0, -9.81 * rho))
+
+# Tip traction load
+class TipBoundary(SubDomain):
+    def inside(self, x, on_boundary):
+        return on_boundary and near(x[0], L)
+        
+boundaries      = MeshFunction("size_t", mesh, dim-1)
+boundaries.set_all(0)
+tip_boundary    = TipBoundary()
+tip_boundary.mark(boundaries, 1)
+ds              = Measure("ds", domain=mesh, subdomain_data=boundaries)
+
+g_traction      = Constant((0.0, -1e5)) if dim == 2 else Constant((0.0, 0.0, -1e5))
+L_form          = dot(f_body, v) * dx + dot(g_traction, v) * ds(1)
+
+# Solve static deflection
+print("Solving static deflection...")
+u_static        = Function(V)
+solve(a == L_form, u_static, bc)
+
+vertex_displacements    = u_static.compute_vertex_values(mesh)
+num_vertices            = mesh.num_vertices()
+ux_v                    = vertex_displacements[0:num_vertices]
+uy_v                    = vertex_displacements[num_vertices:2*num_vertices]
+uz_v                    = vertex_displacements[2*num_vertices:3*num_vertices] if dim == 3 else np.zeros(num_vertices)
+max_disp                = np.max(np.sqrt(ux_v**2 + uy_v**2 + uz_v**2))
+print(f"Static deflection completed. Max Displacement: {max_disp:.6e} m")
+```
+
+```{python}
+# Show static results
+scale_factor = 50.0
+plot_deformed_mesh_plotly(
+    mesh, u_static, 
+    title=f"Static Deflection under Loading (Dim: {dim}D)", 
+    scale=scale_factor
+)
+```
+
+# Modal Eigenvalue Analysis
+
+```{python}
+# Assemble matrices
+K           = PETScMatrix()
+M           = PETScMatrix()
+assemble(a, tensor=K)
+assemble(m, tensor=M)
+
+K_sp        = fenics_to_scipy(K)
+M_sp        = fenics_to_scipy(M)
+
+# Constrained degrees of freedom
+fixed_dofs  = list(bc.get_boundary_values().keys())
+all_dofs    = np.arange(V.dim())
+free_dofs   = np.setdiff1d(all_dofs, fixed_dofs)
+
+K_free      = K_sp[free_dofs, :][:, free_dofs]
+M_free      = M_sp[free_dofs, :][:, free_dofs]
+
+num_eigenmodes = 4
+eigenvalues, eigenvectors_free = eigsh(K_free, M=M_free, k=num_eigenmodes, which='SM')
+
+print("\n--- Modal Analysis Results ---")
+print(f"{'Mode':<6} | {'Eigenvalue (rad^2/s^2)':<25} | {'Frequency (Hz)':<15}")
+print("-" * 52)
+
+for mode in range(num_eigenmodes):
+    eigval = eigenvalues[mode]
+    frequency = np.sqrt(max(0.0, eigval)) / (2.0 * np.pi)
+    print(f"{mode+1:<6} | {eigval:<25.4e} | {frequency:<15.2f}")
+```
+
+```{python}
+# Plot the mode shapes
+for mode in range(num_eigenmodes):
+    eigval = eigenvalues[mode]
+    frequency = np.sqrt(max(0.0, eigval)) / (2.0 * np.pi)
+    
+    phi_full = np.zeros(V.dim())
+    phi_full[free_dofs] = eigenvectors_free[:, mode]
+    phi_full /= np.max(np.abs(phi_full))
+    
+    phi_func = Function(V)
+    phi_func.vector()[:] = phi_full
+    
+    plot_deformed_mesh_plotly(
+        mesh, phi_func,
+        title=f"Natural Mode Shape {mode+1} (Freq: {frequency:.2f} Hz, Dim: {dim}D)",
+        scale=0.8
+    )
+```

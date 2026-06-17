@@ -1,0 +1,84 @@
+project:
+  resources:
+    - "Resources"
+    - "style_site.scss"
+    - "Hal_css.css"
+    - "Hal_css_dark.css"
+    - "custom_hal.js"
+  type: website
+  output-dir: public
+
+execute:
+  freeze: auto
+
+
+website:
+  title: "Finite Element Method (FEM) Lab Work"
+  description: "Lab sessions on 1D Truss and 2D/3D elasticity, modal, and transient dynamic analysis using NumPy/SciPy, JAX, and FEniCS."
+  navbar:
+    # style: "docked"
+    search: true
+    # collapse-level: 2
+    # contents:
+    #   - section: "Overview"
+    #     contents:
+    #       - index.qmd
+    #   - section: "1D Finite Element Analysis"
+    #     contents:
+    #       - 01_truss_numpy.qmd
+    #   #     - 02_truss_jax.qmd
+    #   - section: "2D/3D FEniCS Applications"
+    #     contents:
+    #       - 03_elasticity_fenics.qmd
+    #       - 04_newmark_dynamics.qmd
+    #       - 04_newmark_dynamics_surface.qmd
+    #       - 05_convergence_fenics.qmd
+    right:
+      # - text: "Home"
+      #   href: index.qmd
+      - text: "1D Finite Element Analysis"
+        menu:
+          - text: "Numpy assembly and solve"
+            href: 01_truss_numpy.qmd
+          - text: "Jax energy approach"
+            href: 02_truss_jax.qmd
+      - text: "2D/3D FEniCS Applications"
+        menu:
+          - text: "Modal analysis"
+            href: 03_elasticity_fenics.qmd
+          - text: "Linear Dynamics"
+            href: 04_newmark_dynamics_surface.qmd
+          - text: "Mesh convergence"
+            href: 05_convergence_fenics.qmd
+      - text: "Alexandre Daby-Seesaram's homepage"
+        href: https://alexandredabyseesaram.github.io/
+
+# format:
+#   html:
+#     theme: cosmo
+#     css: styles.css
+#     toc: true
+#     toc-depth: 3
+#     code-fold: show
+#     code-summary: "Show code"
+#     code-copy: true
+#     highlight-style: github
+#     html-math-method: mathjax
+
+
+
+format:
+  html:
+    email-obfuscation: javascript
+    theme:
+      light: [flatly,style_site.scss]
+      dark: [darkly,style_site_dark.scss]
+    # mainfont: Lato 
+    css: styles.css
+    toc: true
+    include-after-body:
+      text: |
+        <script type="application/javascript" src="custom_hal.js"></script>
+
+
+

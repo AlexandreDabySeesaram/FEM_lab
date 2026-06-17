@@ -1,0 +1,561 @@
+---
+title: "1D Linear Elasticity FEM (NumPy)"
+subtitle: "1D uniaxial bar under traction and body forces"
+# jupyter: python3
+jupyter: jax-env-kernel
+---
+
+# Formulation of the problem
+
+
+### Strong form of the problem
+
+For a 1D beam under tension-compression, if an external distributed axial force $q(x)$ is applied per unit length, the conservation of linear momentum reads
+
+$$\frac{\mathrm{d}N}{\mathrm{d}x} + q = 0,$$ 
+
+where $N(x) = \int_A \sigma \, \mathrm{d}A = \sigma A$ represents the resultant axial force. The kinematics is described using the linearised strain tensor 
+
+$$\varepsilon = \frac{\mathrm{d}u}{\mathrm{d}x} = u'(x),$$
+
+which is proportional to Cauchy stress tensor in linear elasticity, therefore
+
+$$\sigma = E\varepsilon$$, with $E$ the young modulus of our beam. 
+
+Therefore, 
+
+$$\frac{\mathrm{d}}{\mathrm{d}x}\left(EA \frac{\mathrm{d}u}{\mathrm{d}x}\right) + q = 0$$
+
+Assuming homogeneous material properties and a constant cross-section ($EA = \text{constant}$), we arrive at your governing beam equation under tension:
+
+$$E A u''(x) + q = 0$$
+
+---
+
+### Weak forumlation
+
+
+We multiply the strong form by a virtual displacement test function $v(x)\in \mathcal{H^p_0\left(\Omega\right)}$ and integrate over the domain $[0, L]$:
+
+$$\int_0^L v(x) \left[ EA u''(x) + q \right] \mathrm{d}x = 0$$
+
+Applying integration by parts to the second-derivative term:
+
+$$\left[ v(x) EA u'(x) \right]_0^L - \int_0^L v'(x) EA u'(x) \mathrm{d}x + \int_0^L v(x) q \mathrm{d}x = 0$$
+
+Because $v(x)$ is homegeneous, the weak form reads
+
+$$\int_0^L EA u'(x) v'(x) \mathrm{d}x = \int_0^L q v(x) \mathrm{d}x$$
+
+
+---
+
+### Boundary conditions
+
+We apply Dirichlet boundary conditions at both ends of the beam
+
+- $u(x = 0) = u_0$
+- $u(x = L) = u_L$
+
+
+--- 
+
+### Discretisation 
+
+We discretise the 1D bar of length $L$ with $N_e$ elements.
+
+We compare linear ($P^1$) and quadratic ($P^2$) elements, use different Dirichlet boundary conditions formulations, and analyse convergence rates.
+
+```{python}
+#| code-fold: true
+import os
+import sys
+import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
+# Append current working directory to path for imports
+sys.path.append(os.getcwd())
+
+from fem_lib import assemble_global_system, apply_bc_penalisation, apply_bc_lagrange
+
+# -------------------------------------------------------------
+# Parameter Setup
+# -------------------------------------------------------------
+L  = 2.0            # Length of the bar (m)
+E  = 2.0e11         # Young's Modulus (Pa) ~ steel
+A  = 1.0e-4         # Cross-sectional area (m^2)
+q  = 2e5            # Constant body force (distributed load, N/m)
+u0 = 0.005          # Imposed displacement at x = 0 (m)
+uL = 0.015          # Imposed displacement at x = L (m)
+```
+
+# Exact Analytical Solution
+
+By integrating $E A u''(x) + q = 0$ twice and applying boundary conditions, we get:
+$$u_{exact}(x) = -\frac{q}{2EA}x^2 + C_1 x + u_0$$
+where $C_1 = \frac{u_L - u_0}{L} + \frac{q L}{2EA}$
+
+The corresponding strain is:
+$$\varepsilon_{exact}(x) = u'_{exact}(x) = -\frac{q}{EA}x + C_1$$
+
+```{python}
+#| code-fold: true
+def u_exact(x):
+    """Exact analytical displacement."""
+    C1 = (uL - u0) / L + q * L / (2.0 * E * A)
+    return -q / (2.0 * E * A) * x**2 + C1 * x + u0
+
+def eps_exact(x):
+    """Exact analytical strain."""
+    C1 = (uL - u0) / L + q * L / (2.0 * E * A)
+    return -q / (E * A) * x + C1
+```
+
+# Solving the problem with different methods
+
+We solve the problem on a grid with $N_e = 4$ elements using:
+
+1. **P1 (Linear)** elements with **penalisation**
+2. **P1 (Linear)** elements with **Lagrange Multipliers**
+3. **P2 (Quadratic)** elements with **penalisation**
+4. **P2 (Quadratic)** elements with **Lagrange Multipliers**
+
+## Computations
+
+```{python}
+Ne = 4  # Number of elements for the mesh
+
+# ### P1 Elements ###
+nodes_p1        = Ne + 1
+x_p1            = np.linspace(0.0, L, nodes_p1)
+elements_p1     = np.array([[i, i+1] for i in range(Ne)]) # connectivity table (easy in 1D)
+
+# Assemble
+K_p1, F_p1      = assemble_global_system(x_p1, elements_p1, "P1", E, A, q)
+
+# Boundary conditions at both ends
+fixed_dofs_p1 = [0, nodes_p1 - 1]
+fixed_vals_p1 = [u0, uL]
+
+# Solve P1 via penalisation
+K_p1_pen, F_p1_pen = apply_bc_penalisation(K_p1, F_p1, fixed_dofs_p1, fixed_vals_p1, pen_factor=1e12)
+u_p1_pen = np.linalg.solve(K_p1_pen, F_p1_pen)
+
+# Solve P1 via Lagrange Multipliers
+K_p1_lag, F_p1_lag = apply_bc_lagrange(K_p1, F_p1, fixed_dofs_p1, fixed_vals_p1)
+sol_p1_lag = np.linalg.solve(K_p1_lag, F_p1_lag)
+u_p1_lag = sol_p1_lag[:nodes_p1]
+lambda_p1 = sol_p1_lag[nodes_p1:]
+
+# ### P2 Elements ###
+nodes_p2 = 2 * Ne + 1
+x_p2 = np.linspace(0.0, L, nodes_p2)
+elements_p2 = np.array([[2*i, 2*i+1, 2*i+2] for i in range(Ne)])
+
+# Assemble
+K_p2, F_p2 = assemble_global_system(x_p2, elements_p2, "P2", E, A, q)
+
+# Boundary conditions at both ends
+fixed_dofs_p2 = [0, nodes_p2 - 1]
+fixed_vals_p2 = [u0, uL]
+
+# Solve P2 via penalisation
+K_p2_pen, F_p2_pen = apply_bc_penalisation(K_p2, F_p2, fixed_dofs_p2, fixed_vals_p2, pen_factor=1e12)
+u_p2_pen = np.linalg.solve(K_p2_pen, F_p2_pen)
+
+# Solve P2 via Lagrange Multipliers
+K_p2_lag, F_p2_lag = apply_bc_lagrange(K_p2, F_p2, fixed_dofs_p2, fixed_vals_p2)
+sol_p2_lag = np.linalg.solve(K_p2_lag, F_p2_lag)
+u_p2_lag = sol_p2_lag[:nodes_p2]
+lambda_p2 = sol_p2_lag[nodes_p2:]
+
+```
+
+```{python}
+#| code-fold: true
+# ### Print Verification Results ###
+print("****** DISPLACEMENT AT TIP (x = L) ******")
+print(f"Analytical:               {u_exact(L):.10f} m")
+print(f"P1 (penalisation):        {u_p1_pen[-1]:.10f} m")
+print(f"P1 (Lagrange Multiplier): {u_p1_lag[-1]:.10f} m")
+print(f"P2 (penalisation):        {u_p2_pen[-1]:.10f} m")
+print(f"P2 (Lagrange Multiplier): {u_p2_lag[-1]:.10f} m")
+
+# Analytical reaction forces
+C1 = (uL - u0) / L + q * L / (2.0 * E * A)
+exact_R0 = - E * A * C1
+exact_RL = E * A * (-q * L / (E * A) + C1)
+
+print("\n****** REACTION FORCES ******")
+print(f"Analytical R0 (x = 0):   {exact_R0:.4e} N")
+print(f"P1 Lagrange R0 (-λ0):    {-lambda_p1[0]:.4e} N")
+print(f"P2 Lagrange R0 (-λ0):    {-lambda_p2[0]:.4e} N")
+print(f"Analytical RL (x = L):   {exact_RL:.4e} N")
+print(f"P1 Lagrange RL (-λ1):    {-lambda_p1[1]:.4e} N")
+print(f"P2 Lagrange RL (-λ1):    {-lambda_p2[1]:.4e} N")
+```
+
+
+## Deflection and Strain Visualisations
+
+We compare the displacement fields and strain profiles along the beam.
+- P1 elements produce a piecewise-linear displacement and constant strain step-profile.
+- P2 elements capture the exact quadratic displacement and linear strain perfectly.
+
+```{python}
+#| code-fold: true
+
+# Create subplots
+fig = make_subplots(
+    rows=2, cols=1,
+    shared_xaxes=True,
+    subplot_titles=("Displacement u(x) [m]", "Strain ε(x) [-]"),
+    vertical_spacing=0.12
+)
+
+x_fine = np.linspace(0, L, 200)
+
+# Displacement plots
+fig.add_trace(go.Scatter(x=x_fine, y=u_exact(x_fine), name="Analytical Exact", line=dict(color="black", width=2.5)), row=1, col=1)
+fig.add_trace(go.Scatter(x=x_p1, y=u_p1_lag, name="P1 (Linear Lagrange)", mode="lines+markers", line=dict(color="#3b82f6", width=2), marker=dict(size=6)), row=1, col=1)
+fig.add_trace(go.Scatter(x=x_p2, y=u_p2_lag, name="P2 (Quadratic Lagrange)", mode="lines+markers", line=dict(color="#ef4444", width=2, dash="dash"), marker=dict(symbol="square", size=6)), row=1, col=1)
+
+# Strain traces plots
+fig.add_trace(go.Scatter(x=x_fine, y=eps_exact(x_fine), name="Analytical Strain", showlegend=False, line=dict(color="black", width=2.5)), row=2, col=1)
+
+# P1 element strain (piecewise constant)
+x_p1_eps = []
+y_p1_eps = []
+for elem in elements_p1:
+    x_el = x_p1[elem]
+    Le = x_el[1] - x_el[0]
+    eps_val = (u_p1_lag[elem[1]] - u_p1_lag[elem[0]]) / Le
+    x_p1_eps.extend([x_el[0], x_el[1]])
+    y_p1_eps.extend([eps_val, eps_val])
+
+fig.add_trace(go.Scatter(x=x_p1_eps, y=y_p1_eps, name="P1 Strain", mode="lines", line=dict(color="#3b82f6", width=2, shape="hv")), row=2, col=1)
+
+# P2 element strain (piecewise linear inside each element)
+x_p2_eps = []
+y_p2_eps = []
+for elem in elements_p2:
+    x_el = x_p2[elem]
+    Le = x_el[2] - x_el[0]
+    u_el = u_p2_lag[elem]
+    
+    # Strains at local xi = -1, 0, 1 (boundary and midpoints)
+    eps_nodes = (2.0 / Le) * np.array([
+        -1.5 * u_el[0] + 2.0 * u_el[1] - 0.5 * u_el[2],
+        -0.5 * u_el[0] + 0.5 * u_el[2],
+         0.5 * u_el[0] - 2.0 * u_el[1] + 1.5 * u_el[2]
+    ])
+    
+    x_p2_eps.extend([x_el[0], x_el[1], x_el[2]])
+    y_p2_eps.extend(eps_nodes)
+
+fig.add_trace(go.Scatter(x=x_p2_eps, y=y_p2_eps, name="P2 Strain", mode="lines+markers", line=dict(color="#ef4444", width=2, dash="dash"), marker=dict(symbol="square", size=5)), row=2, col=1)
+
+fig.update_layout(
+    title="1D Bar Linear Elasticity - Numerical vs Analytical Results",
+    xaxis2_title="Position x [m]",
+    yaxis_title="Displacement u [m]",
+    yaxis2_title="Strain ε [-]",
+    height=750,
+    template="plotly_white"
+)
+
+fig.show()
+```
+
+# Mesh Convergence Analysis
+
+We run the P1 and P2 element solvers on a sequence of refined meshes:
+$$N_e \in \{4, 8, 16, 32, 64\}$$
+We compute the $L^2$ error norm for displacements using a 3-point Gauss quadrature:
+$$\text{Error}_{L^2} = \sqrt{\int_0^L (u_{exact}(x) - u_h(x))^2 \, \mathrm{d}x}$$
+
+Different loading conditions are studied.
+
+
+### Constant Body Force
+
+#### Solve
+
+```{python}
+from fem_lib import gauss_quadrature, shape_functions
+
+def compute_l2_error(x_nodes, elements, element_type, u_numeric, u_exact_fn):
+    """Computes the exact L2 error norm using Gauss-Legendre quadrature."""
+    error_sq = 0.0
+    xi_g, w_g = gauss_quadrature(3)
+    
+    for elem in elements:
+        x_el = x_nodes[elem]
+        x_start = x_el[0]
+        x_end = x_el[-1]
+        Le = x_end - x_start
+        J = Le / 2.0
+        u_el = u_numeric[elem]
+        
+        for xi, w in zip(xi_g, w_g):
+            N, _ = shape_functions(element_type, xi)
+            u_h_val = np.dot(N, u_el)
+            
+            x_val = 0.5 * (x_start + x_end) + J * xi
+            u_ex_val = u_exact_fn(x_val)
+            
+            error_sq += (u_ex_val - u_h_val)**2 * J * w
+            
+    return np.sqrt(error_sq)
+
+def compute_energy_error(x_nodes, elements, element_type, u_numeric, E_val, A_val, eps_exact_fn):
+    """Computes the exact energy error norm using Gauss-Legendre quadrature."""
+    error_sq = 0.0
+    xi_g, w_g = gauss_quadrature(3)
+    
+    for elem in elements:
+        x_el = x_nodes[elem]
+        x_start = x_el[0]
+        x_end = x_el[-1]
+        Le = x_end - x_start
+        J = Le / 2.0
+        u_el = u_numeric[elem]
+        
+        for xi, w in zip(xi_g, w_g):
+            _, dN_dxi = shape_functions(element_type, xi)
+            duh_dx = np.dot(dN_dxi, u_el) / J
+            
+            x_val = 0.5 * (x_start + x_end) + J * xi
+            E_p = E_val(x_val) if callable(E_val) else E_val
+            A_p = A_val(x_val) if callable(A_val) else A_val
+            
+            duex_dx = eps_exact_fn(x_val)
+            
+            error_sq += E_p * A_p * (duex_dx - duh_dx)**2 * J * w
+            
+    return np.sqrt(error_sq)
+
+# Run convergence study for constant body force
+N_list = [4, 8, 16, 32, 64]
+h_list = []
+errors_p1 = []
+errors_p2 = []
+energy_errors_p1 = []
+energy_errors_p2 = []
+
+for i, Ne_loop in enumerate(N_list):
+    h = L / Ne_loop
+    h_list.append(h)
+    
+    # Solve P1
+    nodes_p1_loop = Ne_loop + 1
+    x_p1_loop = np.linspace(0.0, L, nodes_p1_loop)
+    elements_p1_loop = np.array([[j, j+1] for j in range(Ne_loop)])
+    K_p1_l, F_p1_l = assemble_global_system(x_p1_loop, elements_p1_loop, "P1", E, A, q)
+    fixed_dofs_p1_l = [0, nodes_p1_loop - 1]
+    fixed_vals_p1_l = [u0, uL]
+    K_p1_lag_l, F_p1_lag_l = apply_bc_lagrange(K_p1_l, F_p1_l, fixed_dofs_p1_l, fixed_vals_p1_l)
+    sol_p1 = np.linalg.solve(K_p1_lag_l, F_p1_lag_l)
+    u_p1_sol = sol_p1[:nodes_p1_loop]
+    
+    err_p1 = compute_l2_error(x_p1_loop, elements_p1_loop, "P1", u_p1_sol, u_exact)
+    errors_p1.append(err_p1)
+    
+    en_err_p1 = compute_energy_error(x_p1_loop, elements_p1_loop, "P1", u_p1_sol, E, A, eps_exact)
+    energy_errors_p1.append(en_err_p1)
+    
+    # Solve P2
+    nodes_p2_loop = 2 * Ne_loop + 1
+    x_p2_loop = np.linspace(0.0, L, nodes_p2_loop)
+    elements_p2_loop = np.array([[2*j, 2*j+1, 2*j+2] for j in range(Ne_loop)])
+    K_p2_l, F_p2_l = assemble_global_system(x_p2_loop, elements_p2_loop, "P2", E, A, q)
+    fixed_dofs_p2_l = [0, nodes_p2_loop - 1]
+    fixed_vals_p2_l = [u0, uL]
+    K_p2_lag_l, F_p2_lag_l = apply_bc_lagrange(K_p2_l, F_p2_l, fixed_dofs_p2_l, fixed_vals_p2_l)
+    sol_p2 = np.linalg.solve(K_p2_lag_l, F_p2_lag_l)
+    u_p2_sol = sol_p2[:nodes_p2_loop]
+    
+    err_p2 = compute_l2_error(x_p2_loop, elements_p2_loop, "P2", u_p2_sol, u_exact)
+    errors_p2.append(err_p2)
+    
+    en_err_p2 = compute_energy_error(x_p2_loop, elements_p2_loop, "P2", u_p2_sol, E, A, eps_exact)
+    energy_errors_p2.append(en_err_p2)
+```
+
+
+
+#### Plots
+
+
+```{python}
+#| code-fold: true
+
+# L2 Displacement Error Plot
+fig_conv_l2 = go.Figure()
+fig_conv_l2.add_trace(go.Scatter(x=h_list, y=errors_p1, mode='lines+markers', name='P1 - L2 Error', line=dict(color='#3b82f6', width=3)))
+fig_conv_l2.add_trace(go.Scatter(x=h_list, y=errors_p2, mode='lines+markers', name='P2 - L2 Error', line=dict(color='#ef4444', width=3)))
+
+h_ref = np.array(h_list)
+y_ref_p1_l2 = 1.0 * h_ref**2 * errors_p1[0] / (h_list[0]**2)
+y_ref_p2_l2 = 1.0 * h_ref**3 * errors_p1[0] / (h_list[0]**3)
+fig_conv_l2.add_trace(go.Scatter(x=h_list, y=y_ref_p1_l2, mode='lines', name='O(h^2) Reference', line=dict(color='gray', width=1.5, dash='dash')))
+fig_conv_l2.add_trace(go.Scatter(x=h_list, y=y_ref_p2_l2, mode='lines', name='O(h^3) Reference (for comparison)', line=dict(color='gray', width=1.5, dash='dot')))
+
+fig_conv_l2.update_layout(
+    title="1D Bar NumPy FEM - L2 Displacement Error Convergence (Constant Body Force)",
+    xaxis=dict(title="Mesh Size h = L/Ne", type="log", autorange="reversed"),
+    yaxis=dict(title="L2 displacement error [m]", type="log"),
+    template="plotly_white",
+    height=550
+)
+fig_conv_l2.show()
+
+# Energy Error Plot
+fig_conv_en = go.Figure()
+fig_conv_en.add_trace(go.Scatter(x=h_list, y=energy_errors_p1, mode='lines+markers', name='P1 - Energy Error', line=dict(color='#60a5fa', width=3, dash='dash')))
+fig_conv_en.add_trace(go.Scatter(x=h_list, y=energy_errors_p2, mode='lines+markers', name='P2 - Energy Error', line=dict(color='#f87171', width=3, dash='dash')))
+
+y_ref_p1_en = 1.0 * h_ref**1 * energy_errors_p1[0] / (h_list[0]**1)
+y_ref_p2_en = 1.0 * h_ref**2 * energy_errors_p1[0] / (h_list[0]**2)
+fig_conv_en.add_trace(go.Scatter(x=h_list, y=y_ref_p1_en, mode='lines', name='O(h^1) Reference', line=dict(color='gray', width=1.5, dash='dash')))
+fig_conv_en.add_trace(go.Scatter(x=h_list, y=y_ref_p2_en, mode='lines', name='O(h^2) Reference (for comparison)', line=dict(color='gray', width=1.5, dash='dot')))
+
+fig_conv_en.update_layout(
+    title="1D Bar NumPy FEM - Energy Error Convergence (Constant Body Force)",
+    xaxis=dict(title="Mesh Size h = L/Ne", type="log", autorange="reversed"),
+    yaxis=dict(title="Energy error [J^(1/2)]", type="log"),
+    template="plotly_white",
+    height=550
+)
+fig_conv_en.show()
+```
+
+
+**Remark: Polynomial Reproduction & Machine Precision**
+
+1. **P1 (Linear) elements** show clear convergence rates:
+   * **L2 Displacement Error**: Converges at $\mathcal{O}(h^2)$ as expected.
+   * **Energy Error**: Converges at $\mathcal{O}(h^1)$ (matches the derivative/strain accuracy).
+
+2. **P2 (Quadratic) elements** do not show convergence trends because the exact displacement solution is a quadratic polynomial, which $P^2$ shape functions span exactly. Thus, both the displacement ($P^2$) and its derivative ($P^1$ strain) are reproduced exactly up to double-precision machine limits ($\approx 10^{-16}$).
+
+---
+
+### Sinusoidal Body Force
+
+To demonstrate the theoretical convergence rates when the exact solution is *not* a low-order polynomial, we now apply a sinusoidal body force:
+$$q(x) = q_0 \sin\left(\frac{\pi x}{L}\right)$$
+
+Integrating $E A u''(x) + q(x) = 0$ twice with boundary conditions $u(0) = u_0$ and $u(L) = u_L$ yields the exact solution:
+$$u_{\text{exact}}(x) = \frac{q_0 L^2}{\pi^2 E A} \sin\left(\frac{\pi x}{L}\right) + \frac{u_L - u_0}{L}x + u_0$$
+
+#### Solve
+
+
+```{python}
+q0 = 2e5
+
+def u_exact_sin(x):
+    """Exact analytical displacement for sinusoidal body force."""
+    return (q0 * L**2) / (np.pi**2 * E * A) * np.sin(np.pi * x / L) + ((uL - u0) / L) * x + u0
+
+def eps_exact_sin(x):
+    """Exact analytical strain for sinusoidal body force."""
+    return (q0 * L) / (np.pi * E * A) * np.cos(np.pi * x / L) + (uL - u0) / L
+
+def q_sin_func(x):
+    """Sinusoidal body force function."""
+    return q0 * np.sin(np.pi * x / L)
+
+# Run convergence study with sinusoidal force
+errors_p1_sin = []
+errors_p2_sin = []
+energy_errors_p1_sin = []
+energy_errors_p2_sin = []
+
+
+
+for i, Ne_loop in enumerate(N_list):
+    h = L / Ne_loop
+    
+    # Solve P1
+    nodes_p1_loop = Ne_loop + 1
+    x_p1_loop = np.linspace(0.0, L, nodes_p1_loop)
+    elements_p1_loop = np.array([[j, j+1] for j in range(Ne_loop)])
+    K_p1_l, F_p1_l = assemble_global_system(x_p1_loop, elements_p1_loop, "P1", E, A, q_sin_func)
+    fixed_dofs_p1_l = [0, nodes_p1_loop - 1]
+    fixed_vals_p1_l = [u0, uL]
+    K_p1_lag_l, F_p1_lag_l = apply_bc_lagrange(K_p1_l, F_p1_l, fixed_dofs_p1_l, fixed_vals_p1_l)
+    sol_p1 = np.linalg.solve(K_p1_lag_l, F_p1_lag_l)
+    u_p1_sol = sol_p1[:nodes_p1_loop]
+    
+    err_p1 = compute_l2_error(x_p1_loop, elements_p1_loop, "P1", u_p1_sol, u_exact_sin)
+    errors_p1_sin.append(err_p1)
+    
+    en_err_p1 = compute_energy_error(x_p1_loop, elements_p1_loop, "P1", u_p1_sol, E, A, eps_exact_sin)
+    energy_errors_p1_sin.append(en_err_p1)
+    
+    # Solve P2
+    nodes_p2_loop = 2 * Ne_loop + 1
+    x_p2_loop = np.linspace(0.0, L, nodes_p2_loop)
+    elements_p2_loop = np.array([[2*j, 2*j+1, 2*j+2] for j in range(Ne_loop)])
+    K_p2_l, F_p2_l = assemble_global_system(x_p2_loop, elements_p2_loop, "P2", E, A, q_sin_func)
+    fixed_dofs_p2_l = [0, nodes_p2_loop - 1]
+    fixed_vals_p2_l = [u0, uL]
+    K_p2_lag_l, F_p2_lag_l = apply_bc_lagrange(K_p2_l, F_p2_l, fixed_dofs_p2_l, fixed_vals_p2_l)
+    sol_p2 = np.linalg.solve(K_p2_lag_l, F_p2_lag_l)
+    u_p2_sol = sol_p2[:nodes_p2_loop]
+    
+    err_p2 = compute_l2_error(x_p2_loop, elements_p2_loop, "P2", u_p2_sol, u_exact_sin)
+    errors_p2_sin.append(err_p2)
+    
+    en_err_p2 = compute_energy_error(x_p2_loop, elements_p2_loop, "P2", u_p2_sol, E, A, eps_exact_sin)
+    energy_errors_p2_sin.append(en_err_p2)
+    
+```
+
+#### Plots
+
+
+```{python}
+#| code-fold: true
+
+# L2 Displacement Error Plot
+fig_conv_sin_l2 = go.Figure()
+fig_conv_sin_l2.add_trace(go.Scatter(x=h_list, y=errors_p1_sin, mode='lines+markers', name='P1 - L2 Error', line=dict(color='#3b82f6', width=3)))
+fig_conv_sin_l2.add_trace(go.Scatter(x=h_list, y=errors_p2_sin, mode='lines+markers', name='P2 - L2 Error', line=dict(color='#ef4444', width=3)))
+
+y_ref_p1_l2_sin = 1.0 * h_ref**2 * errors_p1_sin[0] / (h_list[0]**2)
+y_ref_p2_l2_sin = 1.0 * h_ref**3 * errors_p2_sin[0] / (h_list[0]**3)
+fig_conv_sin_l2.add_trace(go.Scatter(x=h_list, y=y_ref_p1_l2_sin, mode='lines', name='O(h^2) Reference', line=dict(color='gray', width=1.5, dash='dash')))
+fig_conv_sin_l2.add_trace(go.Scatter(x=h_list, y=y_ref_p2_l2_sin, mode='lines', name='O(h^3) Reference', line=dict(color='gray', width=1.5, dash='dot')))
+
+fig_conv_sin_l2.update_layout(
+    title="1D Bar NumPy FEM - L2 Displacement Error Convergence (Sinusoidal Body Force)",
+    xaxis=dict(title="Mesh Size h = L/Ne", type="log", autorange="reversed"),
+    yaxis=dict(title="L2 displacement error [m]", type="log"),
+    template="plotly_white",
+    height=550
+)
+fig_conv_sin_l2.show()
+
+# Energy Error Plot
+fig_conv_sin_en = go.Figure()
+fig_conv_sin_en.add_trace(go.Scatter(x=h_list, y=energy_errors_p1_sin, mode='lines+markers', name='P1 - Energy Error', line=dict(color='#60a5fa', width=3, dash='dash')))
+fig_conv_sin_en.add_trace(go.Scatter(x=h_list, y=energy_errors_p2_sin, mode='lines+markers', name='P2 - Energy Error', line=dict(color='#f87171', width=3, dash='dash')))
+
+y_ref_p1_en_sin = 1.0 * h_ref**1 * energy_errors_p1_sin[0] / (h_list[0]**1)
+y_ref_p2_en_sin = 1.0 * h_ref**2 * energy_errors_p2_sin[0] / (h_list[0]**2)
+fig_conv_sin_en.add_trace(go.Scatter(x=h_list, y=y_ref_p1_en_sin, mode='lines', name='O(h^1) Reference', line=dict(color='gray', width=1.5, dash='dash')))
+fig_conv_sin_en.add_trace(go.Scatter(x=h_list, y=y_ref_p2_en_sin, mode='lines', name='O(h^2) Reference', line=dict(color='gray', width=1.5, dash='dot')))
+
+fig_conv_sin_en.update_layout(
+    title="1D Bar NumPy FEM - Energy Error Convergence (Sinusoidal Body Force)",
+    xaxis=dict(title="Mesh Size h = L/Ne", type="log", autorange="reversed"),
+    yaxis=dict(title="Energy error [J^(1/2)]", type="log"),
+    template="plotly_white",
+    height=550
+)
+fig_conv_sin_en.show()
+```

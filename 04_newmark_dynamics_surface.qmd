@@ -1,0 +1,438 @@
+---
+title: "Transient Dynamics via Newmark-beta Integration (FEniCS)"
+subtitle: "Displacement-based average-acceleration scheme for 3D structures"
+# jupyter: fenics-arm-env-kernel
+jupyter: fenics-torch-env-kernel
+---
+
+# Formulation & Theory
+
+We simulate the transient dynamic response of a 3D clamped cantilever beam under a time-varying vertical load at the free tip.
+
+The equations of motion are:
+$$\mathbf{M}\ddot{\mathbf{u}} + \mathbf{C}\dot{\mathbf{u}} + \mathbf{K}\mathbf{u} = \mathbf{F}(t)$$
+
+where:
+
+* $\mathbf{M}$ is the mass matrix.
+* $\mathbf{K}$ is the stiffness matrix.
+* $\mathbf{C} = \alpha_R \mathbf{M} + \beta_R \mathbf{K}$ is the Rayleigh damping matrix.
+
+We discretize in time using the average-acceleration Newmark-beta method ($\beta = 0.25$, $\gamma = 0.5$, which is unconditionally stable):
+$$\mathbf{u}_{n+1} = \mathbf{u}_n + \Delta t \dot{\mathbf{u}}_n + \Delta t^2 \left( \left(\frac{1}{2}-\beta\right)\ddot{\mathbf{u}}_n + \beta\ddot{\mathbf{u}}_{n+1} \right)$$
+$$\dot{\mathbf{u}}_{n+1} = \dot{\mathbf{u}}_n + \Delta t \left( (1-\gamma)\ddot{\mathbf{u}}_n + \gamma\ddot{\mathbf{u}}_{n+1} \right)$$
+
+By substituting these into the equation of motion, we solve the effective linear system at each step:
+$$\mathbf{K}_{\text{eff}}\mathbf{u}_{n+1} = \mathbf{F}_{\text{eff}, n+1}$$
+where:
+$$\mathbf{K}_{\text{eff}} = TODO$$ 
+$$\mathbf{F}_{\text{eff}, n+1} = TODO$$ 
+
+
+```{python}
+#| code-fold: true
+
+import os
+import numpy as np
+from dolfin import *
+import plotly.graph_objects as go
+
+# Set log level for FEniCS
+set_log_level(LogLevel.WARNING)
+```
+
+# Parameter Setup & Mesh Generation
+
+```{python}
+#| code-fold: true
+
+# Physical & Geometric Parameters
+L = 5.0             # Length of beam (m)
+W = 0.5             # Width of beam (m)
+H = 0.7             # Height of beam (m)
+E = 2.1e11          # Young's Modulus (Pa) ~ steel
+nu = 0.3            # Poisson's ratio
+rho = 7800.0        # Density (kg/m^3)
+
+# Lame's constants
+mu = E / (2.0 * (1.0 + nu))
+lambda_ = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+
+# Rayleigh Damping coefficients
+alpha_R = 0.5       
+beta_R = 0.0005     
+
+# Time step parameters
+dt = 0.002          
+T_total = 0.8       
+num_steps = int(T_total / dt)
+time_points = np.linspace(0, T_total, num_steps + 1)
+
+# Newmark parameters 
+beta = 0.25
+gamma = 0.5
+
+# Mesh and function space
+print("Setting up 3D Cantilever Beam Mesh")
+mesh = BoxMesh(Point(0.0, 0.0, 0.0), Point(L, W, H), 15, 3, 3)
+V = VectorFunctionSpace(mesh, 'Lagrange', 1)
+print(f"Number of Degrees of Freedom (DOFs): {V.dim()}")
+
+# Clamped BC at x=0
+def clamped_boundary(x, on_boundary):
+    return on_boundary and near(x[0], 0.0)
+    
+zero_u = Constant((0.0, 0.0, 0.0))
+bc = DirichletBC(V, zero_u, clamped_boundary)
+```
+
+# Matrix Assembly
+
+We assemble stiffness $\mathbf{K}$, mass $\mathbf{M}$, and damping $\mathbf{C}$ matrices using FEniCS.
+
+```{python}
+u = TrialFunction(V)
+v_test = TestFunction(V)
+
+def epsilon(u_field):
+    return sym(grad(u_field))
+    
+def sigma(u_field):
+    return 2.0 * mu * epsilon(u_field) + lambda_ * tr(epsilon(u_field)) * Identity(3)
+
+k_form = inner(sigma(u), epsilon(v_test)) * dx
+m_form = rho * dot(u, v_test) * dx
+c_form = alpha_R * m_form + beta_R * k_form
+
+print("Assembling system matrices M, K, C...")
+K = assemble(k_form)
+M = assemble(m_form)
+C = assemble(c_form)
+```
+
+# Setup Time-Dependent Tip Shear Load
+
+We apply a harmonic load vertical force at the tip:
+$$g(t) = g_{\text{mag}} \sin(\omega t)$$
+
+```{python}
+class TipCornerBoundary(SubDomain):
+    def inside(self, x, on_boundary):
+        return on_boundary and near(x[0], L)
+        
+boundaries = MeshFunction("size_t", mesh, 2)
+boundaries.set_all(0)
+tip_boundary = TipCornerBoundary()
+tip_boundary.mark(boundaries, 1)
+ds = Measure("ds", domain=mesh, subdomain_data=boundaries)
+
+f_freq = 15.0       # Force frequency (Hz)
+omega = 2.0 * np.pi * f_freq
+g_mag = -2e5        # traction amplitude (N/m^2)
+
+g_expr = Expression(("0.0", "0.0", "g_mag * sin(omega * t)"), 
+                    g_mag=g_mag, omega=omega, t=0.0, degree=1)
+
+L_form = dot(g_expr, v_test) * ds(1)
+```
+
+# Solver Setup & Effective Stiffness Assembly
+
+We pre-assemble and LU-factorize $\mathbf{K}_{\text{eff}}$ only once before the time loop starts.
+
+```{python}
+# Newmark integration constants
+c0 = 1.0 / (beta * dt**2)
+c1 = gamma / (beta * dt)
+c2 = 1.0 / (beta * dt)
+c3 = 1.0 / (2.0 * beta) - 1.0
+c4 = gamma / beta - 1.0
+c5 = dt * (gamma / (2.0 * beta) - 1.0)
+
+# Assemble K_eff
+a_eff = k_form + c0 * m_form + c1 * c_form
+print("Assembling effective stiffness matrix K_eff")
+K_eff = assemble(a_eff)
+bc.apply(K_eff)
+
+solver = LUSolver(K_eff)
+```
+
+# Time Loop Execution
+
+```{python}
+# Initialise states 
+u_n = Function(V)
+v_n = Function(V)
+a_n = Function(V)
+
+u_n.vector()[:] = 0.0
+v_n.vector()[:] = 0.0
+a_n.vector()[:] = 0.0
+
+# Tracking vertical tip displacement 
+tip_coords = np.array([L, W, H])
+vertex_to_dof = vertex_to_dof_map(V)
+coords = mesh.coordinates()
+tip_vertex_idx = np.argmin(np.linalg.norm(coords - tip_coords, axis=1))
+dof_z = vertex_to_dof[3 * tip_vertex_idx + 2]
+
+tip_disp_history = [0.0]
+
+# Allocate temporary vector buffers for fast execution
+F_eff = Vector(u_n.vector())
+tmp_M = Vector(u_n.vector())
+tmp_C = Vector(u_n.vector())
+tmp_u = Vector(u_n.vector())
+tmp_u2 = Vector(u_n.vector())
+
+u_new = Function(V)
+
+print(f"\nStarting time loop for {num_steps} steps")
+displacement_series = []
+
+for step in range(1, num_steps + 1):
+    t = step * dt
+    g_expr.t = t # Update time parameter in Expression
+    
+    # Assemble external load
+    F_ext = assemble(L_form)
+    
+    # Compute terms
+    tmp_u.zero()
+    tmp_u.axpy(c0, u_n.vector())
+    tmp_u.axpy(c2, v_n.vector())
+    tmp_u.axpy(c3, a_n.vector())
+    M.mult(tmp_u, tmp_M)
+    
+    tmp_u2.zero()
+    tmp_u2.axpy(c1, u_n.vector())
+    tmp_u2.axpy(c4, v_n.vector())
+    tmp_u2.axpy(c5, a_n.vector())
+    C.mult(tmp_u2, tmp_C)
+    
+    # Form F_eff
+    F_eff.zero()
+    F_eff.axpy(1.0, F_ext)
+    F_eff.axpy(1.0, tmp_M)
+    F_eff.axpy(1.0, tmp_C)
+    
+    bc.apply(F_eff)
+    
+    # Solve system
+    solver.solve(u_new.vector(), F_eff)
+    
+    # Update state vectors
+    a_new = Vector(u_n.vector())
+    a_new.zero()
+    a_new.axpy(c0, u_new.vector())
+    a_new.axpy(-c0, u_n.vector())
+    a_new.axpy(-c2, v_n.vector())
+    a_new.axpy(-c3, a_n.vector())
+    
+    v_new = Vector(u_n.vector())
+    v_new.zero()
+    v_new.axpy(1.0, v_n.vector())
+    v_new.axpy(dt * (1.0 - gamma), a_n.vector())
+    v_new.axpy(dt * gamma, a_new)
+    
+    u_n.assign(u_new)
+    v_n.vector()[:] = v_new
+    a_n.vector()[:] = a_new
+    
+    tip_z = u_n.vector()[dof_z]
+    tip_disp_history.append(tip_z)
+    displacement_series.append(u_n.vector().get_local())
+
+```
+
+# Plotly Deflection History
+
+We plot the dynamic tip displacement history over time.
+
+```{python}
+#| code-fold: true
+
+fig = go.Figure()
+fig.add_trace(
+    go.Scatter(
+        x=time_points,
+        y=tip_disp_history,
+        mode='lines',
+        line=dict(color='#60a5fa', width=3),
+        name='Tip Z-Displacement'
+    )
+)
+
+fig.update_layout(
+    title=dict(
+        text="Dynamic Response of Cantilever Beam Tip over Time (Newmark-beta)",
+        font=dict(size=18, family="Outfit, sans-serif")
+    ),
+    xaxis_title="Time t [s]",
+    yaxis_title="Tip Vertical Displacement u_z [m]",
+    template="plotly_white",
+    height=550,
+    grid=dict(rows=1, columns=1),
+    margin=dict(l=50, r=30, b=50, t=50)
+)
+fig.show()
+```
+
+## 3+1D results 
+
+```{python}
+#| code-fold: true
+
+import plotly.graph_objects as go
+import numpy as np
+
+# Extract mesh coordinates and connectivity
+v_coords = mesh.coordinates()
+cells = mesh.cells()
+
+# Setup structural indices for Plotly's Mesh3d (Triangles)
+# Extract only the boundary/surface triangles to remove visual artifacts
+if cells.shape[1] == 4: # Tetrahedra
+    # Extract all faces (4 per tet)
+    faces = np.vstack([
+        cells[:, [0, 1, 2]],
+        cells[:, [0, 1, 3]],
+        cells[:, [0, 2, 3]],
+        cells[:, [1, 2, 3]]
+    ])
+    # Find unique faces that appear exactly once (boundary faces)
+    sorted_faces = np.sort(faces, axis=1)
+    _, indices, counts = np.unique(sorted_faces, axis=0, return_index=True, return_counts=True)
+    triangles = faces[indices[counts == 1]]
+elif cells.shape[1] == 8: # Hexahedra
+    # Extract all quad faces (6 per hex)
+    faces = []
+    for c in cells:
+        f = [
+            [c[0], c[1], c[2], c[3]],
+            [c[4], c[5], c[6], c[7]],
+            [c[0], c[1], c[5], c[4]],
+            [c[2], c[3], c[7], c[6]],
+            [c[0], c[3], c[7], c[4]],
+            [c[1], c[2], c[6], c[5]]
+        ]
+        faces.extend(f)
+    faces = np.array(faces)
+    # Find unique faces that appear exactly once
+    sorted_faces = np.sort(faces, axis=1)
+    _, indices, counts = np.unique(sorted_faces, axis=0, return_index=True, return_counts=True)
+    boundary_quads = faces[indices[counts == 1]]
+    # Triangulate boundary quads
+    faces_list = []
+    for q in boundary_quads:
+        faces_list.append([q[0], q[1], q[2]])
+        faces_list.append([q[0], q[2], q[3]])
+    triangles = np.array(faces_list)
+
+warping_factor = 100.0  # Exaggerate for visibility
+frames = []
+
+# Build the animation frames
+# Sampling every 5th or 10th step keeps the final HTML file size reasonable
+sample_stride = 5 
+sampled_steps = list(range(0, len(displacement_series), sample_stride))
+
+for idx in sampled_steps:
+    u_array = displacement_series[idx]
+    disp = u_array[vertex_to_dof].reshape((-1, 3))
+    
+    # Warped coordinates
+    x_def = v_coords[:, 0] + disp[:, 0] * warping_factor
+    y_def = v_coords[:, 1] + disp[:, 1] * warping_factor
+    z_def = v_coords[:, 2] + disp[:, 2] * warping_factor
+    
+    # Calculate displacement magnitude for color mapping
+    mag = np.linalg.norm(disp, axis=1)
+    
+    frames.append(go.Frame(
+        data=[go.Mesh3d(
+            x=x_def, y=y_def, z=z_def,
+            i=triangles[:, 0], j=triangles[:, 1], k=triangles[:, 2],
+            intensity=mag,
+            colorscale='Viridis',
+            showscale=False
+        )],
+        name=f"frame_{idx}"
+    ))
+
+# Set up initial state (Frame 0)
+u_array = displacement_series[0]
+initial_disp = u_array[vertex_to_dof].reshape((-1, 3))
+init_mag = np.linalg.norm(initial_disp, axis=1)
+
+fig_3d = go.Figure(
+    data=[go.Mesh3d(
+        x=v_coords[:, 0] + initial_disp[:, 0] * warping_factor,
+        y=v_coords[:, 1] + initial_disp[:, 1] * warping_factor,
+        z=v_coords[:, 2] + initial_disp[:, 2] * warping_factor,
+        i=triangles[:, 0], j=triangles[:, 1], k=triangles[:, 2],
+        intensity=init_mag,
+        colorscale='Viridis',
+        colorbar=dict(title="Displacement Magnitude (m)", thickness=15, len=0.6)
+    )],
+    layout=go.Layout(
+        title="Interactive 3D Beam Deflection History (Surface Only)",
+        scene=dict(
+            xaxis=dict(range=[-1, 6], title="X"),
+            yaxis=dict(range=[-1, 1.5], title="Y"),
+            zaxis=dict(range=[-1.5, 1.5], title="Z"),
+            aspectmode='manual',
+            aspectratio=dict(x=2, y=0.6, z=0.6)
+        ),
+        updatemenus=[{
+            "type": "buttons",
+            "buttons": [
+                {
+                    "label": "Play",
+                    "method": "animate",
+                    "args": [None, {"frame": {"duration": 40, "redraw": True}, "fromcurrent": True}]
+                },
+                {
+                    "label": "Pause",
+                    "method": "animate",
+                    "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}]
+                }
+            ],
+            "direction": "left",
+            "pad": {"r": 10, "t": 87},
+            "showactive": False,
+            "x": 0.1,
+            "xanchor": "right",
+            "y": 0,
+            "yanchor": "top"
+        }],
+        sliders=[{
+            "active": 0,
+            "yanchor": "top",
+            "xanchor": "left",
+            "currentvalue": {
+                "font": {"size": 14},
+                "prefix": "Time Step: ",
+                "visible": True,
+                "xanchor": "right"
+            },
+            "transition": {"duration": 30, "easing": "cubic-in-out"},
+            "pad": {"b": 10, "t": 50},
+            "len": 0.9,
+            "x": 0.1,
+            "y": 0,
+            "steps": [
+                {
+                    "args": [[f"frame_{idx}"], {"frame": {"duration": 30, "redraw": True}, "mode": "immediate"}],
+                    "label": f"{idx * dt:.3f}s",
+                    "method": "animate"
+                } for idx in sampled_steps
+            ]
+        }]
+    ),
+    frames=frames
+)
+
+fig_3d.show()
+```

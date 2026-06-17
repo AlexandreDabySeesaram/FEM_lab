@@ -1,0 +1,28 @@
+---
+title: "Finite Element Method (FEM) Lab Work"
+subtitle: "Interactive Numerical Sessions for 1D and 2D/3D Structures"
+---
+
+
+This website hosts a self-contained, interactive lab exercises on the Finite Element Method (FEM) for undergraduate and graduate courses at **ENSTA, Institut Polytechnique de Paris**.
+
+
+The lab work is structured into two main parts:
+
+
+### 1. 1D Finite Element Analysis
+Solved from scratch using pure python, comparing linear and quadratic elements:
+
+* **[NumPy/SciPy Solver](01_truss_numpy.qmd)**: A modular solver from scratch. Illustrates matrix assembly, Gauss integration, boundary conditions (penalisation vs. Lagrange Multipliers), and displacement/energy norm convergence rates.
+
+
+
+### 2. 2D/3D FEniCS Applications
+Leveraging the FEniCS automated computing platform for multidimensional mechanics:
+
+* **[Linear Elasticity & Modal Analysis](03_elasticity_fenics.qmd)**: Cantilever beam static deflection under gravity/tip shear and eigenvalue analysis for natural frequencies.
+* **[Linear Dynamics](04_newmark_dynamics.qmd)**: Time integration using the Durchschnittbeschleunigung Newmark-beta method.
+* **[Mesh Convergence](05_convergence_fenics.qmd)**: Verifying element rates of $P^1$ and $P^2$ elements on triangular meshes.
+
+---
+
