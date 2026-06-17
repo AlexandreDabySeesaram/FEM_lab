@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Finite Element Method (FEM) Lab Work – Finite Element Method - Lab</title>
+<title>Energy approach (FeniCS) – Finite Element Method - Lab</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -75,35 +75,6 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 
-  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
-  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
 
 <link rel="stylesheet" href="styles.css">
 </head>
@@ -345,15 +316,8 @@ window.Quarto = {
 <div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
-    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#d2d-finite-element-analysis" id="toc-d2d-finite-element-analysis" class="nav-link active" data-scroll-target="#d2d-finite-element-analysis">1. 1D/2D Finite Element Analysis</a></li>
-  <li><a href="#d3d-fenics-applications" id="toc-d3d-fenics-applications" class="nav-link" data-scroll-target="#d3d-fenics-applications">2. 2D/3D FEniCS Applications</a></li>
-  </ul>
-</nav>
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar zindex-bottom">
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -361,8 +325,7 @@ window.Quarto = {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Finite Element Method (FEM) Lab Work</h1>
-<p class="subtitle lead">Interactive Numerical Sessions for 1D and 2D/3D Structures</p>
+<h1 class="title">Energy approach (FeniCS)</h1>
 </div>
 
 
@@ -379,29 +342,14 @@ window.Quarto = {
 </header>
 
 
-<p>This website hosts a self-contained, interactive lab exercises on the Finite Element Method (FEM) for undergraduate and graduate courses at <strong>ENSTA, Institut Polytechnique de Paris</strong>.</p>
-<p>The lab work is structured into two main parts:</p>
-<section id="d2d-finite-element-analysis" class="level3">
-<h3 class="anchored" data-anchor-id="d2d-finite-element-analysis">1. 1D/2D Finite Element Analysis</h3>
-<p>Solved from scratch using pure python, comparing linear and quadratic elements:</p>
+<p>Same as jax but with fenics to open the way to non linear problems</p>
 <ul>
-<li><p><strong><a href="./01_truss_numpy.html">NumPy/SciPy Solver</a></strong>: A modular solver from scratch. Illustrates matrix assembly, Gauss integration, boundary conditions (penalisation vs.&nbsp;Lagrange Multipliers), and displacement/energy norm convergence rates.</p></li>
-<li><p><strong><a href="./02_truss_jax.html">Energy description of the problem</a></strong>: Write the energy of the system as a function of u, derivate twice using jax’s autodiff to get the hessian that correspond to K. First step towards more general nonlinear problems</p></li>
+<li>Write the total energy</li>
+<li>derivate twice using UFL to get hessian matrix that is K</li>
+<li>Solve problem</li>
 </ul>
-</section>
-<section id="d3d-fenics-applications" class="level3">
-<h3 class="anchored" data-anchor-id="d3d-fenics-applications">2. 2D/3D FEniCS Applications</h3>
-<p>Leveraging the FEniCS automated computing platform for multidimensional mechanics:</p>
-<ul>
-<li><strong><a href="./03_elasticity_fenics.html">Linear Elasticity &amp; Modal Analysis</a></strong>: Cantilever beam static deflection under gravity/tip shear and eigenvalue analysis for natural frequencies.</li>
-<li><strong><a href="./04_newmark_dynamics.html">Linear Dynamics</a></strong>: Time integration using the Durchschnittbeschleunigung Newmark-beta method.</li>
-<li><strong><a href="./05_convergence_fenics.html">Mesh Convergence</a></strong>: Verifying element rates of <span class="math inline">\(P^1\)</span> and <span class="math inline">\(P^2\)</span> elements on triangular meshes.</li>
-<li><strong><a href="./06_fenics_energy.html">Energy description of the problem</a></strong>: Write the energy of the system as a function of u, derivate twice using ufl to get the hessian that correspond to K. First step towards more general nonlinear problems</li>
-</ul>
-<hr>
 
 
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
