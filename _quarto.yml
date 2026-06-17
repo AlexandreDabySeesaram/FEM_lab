@@ -36,10 +36,12 @@ website:
     right:
       # - text: "Home"
       #   href: index.qmd
-      - text: "1D Finite Element Analysis"
+      - text: "1D/2D NumPy Finite Element Analysis"
         menu:
           - text: "Numpy assembly and solve"
             href: 01_truss_numpy.qmd
+          - text: "2D element integration"
+            href: 01b_triangle_numpy.qmd
           - text: "Jax energy approach"
             href: 02_truss_jax.qmd
       - text: "2D/3D FEniCS Applications"

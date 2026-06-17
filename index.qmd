@@ -10,7 +10,7 @@ This website hosts a self-contained, interactive lab exercises on the Finite Ele
 The lab work is structured into two main parts:
 
 
-### 1. 1D Finite Element Analysis
+### 1. 1D/2D Finite Element Analysis
 Solved from scratch using pure python, comparing linear and quadratic elements:
 
 * **[NumPy/SciPy Solver](01_truss_numpy.qmd)**: A modular solver from scratch. Illustrates matrix assembly, Gauss integration, boundary conditions (penalisation vs. Lagrange Multipliers), and displacement/energy norm convergence rates.
