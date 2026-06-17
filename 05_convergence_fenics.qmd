@@ -5,7 +5,7 @@ subtitle: "Verification of convergence rates for linear (P1) and quadratic (P2) 
 jupyter: fenics-torch-env-kernel
 ---
 
-# I) Formulation & Theory
+# Formulation & Theory
 
 
 ### Reference solution for convergence analysis 3D Uniaxial Tension Beam
