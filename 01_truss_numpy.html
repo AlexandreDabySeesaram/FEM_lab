@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>1D Linear Elasticity FEM (NumPy) – Finite Element Method (FEM) Lab Work</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js" integrity="sha384-ZvpUoO/+PpLXR1lu4jmpXWu80pZlYUAfxl5NsBMWOEPSjUn/6Z/hRTt8+pR6L4N2" crossorigin="anonymous"></script><script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-f418161beb48e0141c760e455f12af2c.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-cb2fdfb094a2d3b77287728f1cfb8cc4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-81d19ff853a390d6dc60d216c344fd90.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-cb2fdfb094a2d3b77287728f1cfb8cc4.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="https://cdn.jsdelivr.net/npm/requirejs@2.3.6/require.min.js" integrity="sha384-c9c+LnTbwQ3aujuU7ULEPVvgLs+Fn6fJUvIGTsuu1ZcCf11fiEubah0ttpca4ntM sha384-6V1/AdqZRWk1KAlWbKBlGhN7VG4iE/yAZcO6NZPMF8od0vukrvr0tg4qY6NSrItx" crossorigin="anonymous"></script>
+
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script>
+window.PlotlyConfig = {MathJaxConfig: 'local'};
+if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}
+</script>
+<script type="module">import "https://cdn.plot.ly/plotly-3.6.0.min"</script>
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="nav-fixed quarto-light"><script id="quarto-html-before-body" type="application/javascript">
+    const toggleBodyColorMode = (bsSheetEl) => {
+      const mode = bsSheetEl.getAttribute("data-mode");
+      const bodyEl = window.document.querySelector("body");
+      if (mode === "dark") {
+        bodyEl.classList.add("quarto-dark");
+        bodyEl.classList.remove("quarto-light");
+      } else {
+        bodyEl.classList.add("quarto-light");
+        bodyEl.classList.remove("quarto-dark");
+      }
+    }
+    const toggleBodyColorPrimary = () => {
+      const bsSheetEl = window.document.querySelector("link#quarto-bootstrap:not([rel=disabled-stylesheet])");
+      if (bsSheetEl) {
+        toggleBodyColorMode(bsSheetEl);
+      }
+    }
+    const setColorSchemeToggle = (alternate) => {
+      const toggles = window.document.querySelectorAll('.quarto-color-scheme-toggle');
+      for (let i=0; i < toggles.length; i++) {
+        const toggle = toggles[i];
+        if (toggle) {
+          if (alternate) {
+            toggle.classList.add("alternate");
+          } else {
+            toggle.classList.remove("alternate");
+          }
+        }
+      }
+    };
+    const toggleColorMode = (alternate) => {
+      // Switch the stylesheets
+      const primaryStylesheets = window.document.querySelectorAll('link.quarto-color-scheme:not(.quarto-color-alternate)');
+      const alternateStylesheets = window.document.querySelectorAll('link.quarto-color-scheme.quarto-color-alternate');
+      manageTransitions('#quarto-margin-sidebar .nav-link', false);
+      if (alternate) {
+        // note: dark is layered on light, we don't disable primary!
+        enableStylesheet(alternateStylesheets);
+        for (const sheetNode of alternateStylesheets) {
+          if (sheetNode.id === "quarto-bootstrap") {
+            toggleBodyColorMode(sheetNode);
+          }
+        }
+      } else {
+        disableStylesheet(alternateStylesheets);
+        enableStylesheet(primaryStylesheets)
+        toggleBodyColorPrimary();
+      }
+      manageTransitions('#quarto-margin-sidebar .nav-link', true);
+      // Switch the toggles
+      setColorSchemeToggle(alternate)
+      // Hack to workaround the fact that safari doesn't
+      // properly recolor the scrollbar when toggling (#1455)
+      if (navigator.userAgent.indexOf('Safari') > 0 && navigator.userAgent.indexOf('Chrome') == -1) {
+        manageTransitions("body", false);
+        window.scrollTo(0, 1);
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+          manageTransitions("body", true);
+        }, 40);
+      }
+    }
+    const disableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        stylesheet.rel = 'disabled-stylesheet';
+      }
+    }
+    const enableStylesheet = (stylesheets) => {
+      for (let i=0; i < stylesheets.length; i++) {
+        const stylesheet = stylesheets[i];
+        if(stylesheet.rel !== 'stylesheet') { // for Chrome, which will still FOUC without this check
+          stylesheet.rel = 'stylesheet';
+        }
+      }
+    }
+    const manageTransitions = (selector, allowTransitions) => {
+      const els = window.document.querySelectorAll(selector);
+      for (let i=0; i < els.length; i++) {
+        const el = els[i];
+        if (allowTransitions) {
+          el.classList.remove('notransition');
+        } else {
+          el.classList.add('notransition');
+        }
+      }
+    }
+    const isFileUrl = () => {
+      return window.location.protocol === 'file:';
+    }
+    const hasAlternateSentinel = () => {
+      let styleSentinel = getColorSchemeSentinel();
+      if (styleSentinel !== null) {
+        return styleSentinel === "alternate";
+      } else {
+        return false;
+      }
+    }
+    const setStyleSentinel = (alternate) => {
+      const value = alternate ? "alternate" : "default";
+      if (!isFileUrl()) {
+        window.localStorage.setItem("quarto-color-scheme", value);
+      } else {
+        localAlternateSentinel = value;
+      }
+    }
+    const getColorSchemeSentinel = () => {
+      if (!isFileUrl()) {
+        const storageValue = window.localStorage.getItem("quarto-color-scheme");
+        return storageValue != null ? storageValue : localAlternateSentinel;
+      } else {
+        return localAlternateSentinel;
+      }
+    }
+    const toggleGiscusIfUsed = (isAlternate, darkModeDefault) => {
+      const baseTheme = document.querySelector('#giscus-base-theme')?.value ?? 'light';
+      const alternateTheme = document.querySelector('#giscus-alt-theme')?.value ?? 'dark';
+      let newTheme = '';
+      if(authorPrefersDark) {
+        newTheme = isAlternate ? baseTheme : alternateTheme;
+      } else {
+        newTheme = isAlternate ? alternateTheme : baseTheme;
+      }
+      const changeGiscusTheme = () => {
+        // From: https://github.com/giscus/giscus/issues/336
+        const sendMessage = (message) => {
+          const iframe = document.querySelector('iframe.giscus-frame');
+          if (!iframe) return;
+          iframe.contentWindow.postMessage({ giscus: message }, 'https://giscus.app');
+        }
+        sendMessage({
+          setConfig: {
+            theme: newTheme
+          }
+        });
+      }
+      const isGiscussLoaded = window.document.querySelector('iframe.giscus-frame') !== null;
+      if (isGiscussLoaded) {
+        changeGiscusTheme();
+      }
+    };
+    const authorPrefersDark = false;
+    const darkModeDefault = authorPrefersDark;
+      document.querySelector('link#quarto-text-highlighting-styles.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+      document.querySelector('link#quarto-bootstrap.quarto-color-scheme-extra').rel = 'disabled-stylesheet';
+    let localAlternateSentinel = darkModeDefault ? 'alternate' : 'default';
+    // Dark / light mode switch
+    window.quartoToggleColorScheme = () => {
+      // Read the current dark / light value
+      let toAlternate = !hasAlternateSentinel();
+      toggleColorMode(toAlternate);
+      setStyleSentinel(toAlternate);
+      toggleGiscusIfUsed(toAlternate, darkModeDefault);
+      window.dispatchEvent(new Event('resize'));
+    };
+    // Switch to dark mode if need be
+    if (hasAlternateSentinel()) {
+      toggleColorMode(true);
+    } else {
+      toggleColorMode(false);
+    }
+  </script>
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Finite Element Method (FEM) Lab Work</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-d-finite-element-analysis" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">1D Finite Element Analysis</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-d-finite-element-analysis">    
+        <li>
+    <a class="dropdown-item" href="./01_truss_numpy.html">
+ <span class="dropdown-text">Numpy assembly and solve</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./02_truss_jax.qmd">
+ <span class="dropdown-text">Jax energy approach</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item dropdown ">
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-d3d-fenics-applications" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">2D/3D FEniCS Applications</span>
+    </a>
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-d3d-fenics-applications">    
+        <li>
+    <a class="dropdown-item" href="./03_elasticity_fenics.html">
+ <span class="dropdown-text">Modal analysis</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./04_newmark_dynamics_surface.html">
+ <span class="dropdown-text">Linear Dynamics</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./05_convergence_fenics.html">
+ <span class="dropdown-text">Mesh convergence</span></a>
+  </li>  
+    </ul>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link" href="https://alexandredabyseesaram.github.io/"> 
+<span class="menu-text">Alexandre Daby-Seesaram’s homepage</span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+  <a href="" class="quarto-color-scheme-toggle quarto-navigation-tool  px-1" onclick="window.quartoToggleColorScheme(); return false;" title="Toggle dark mode"><i class="bi"></i></a>
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#formulation-of-the-problem" id="toc-formulation-of-the-problem" class="nav-link active" data-scroll-target="#formulation-of-the-problem">Formulation of the problem</a>
+  <ul class="collapse">
+  <li><a href="#strong-form-of-the-problem" id="toc-strong-form-of-the-problem" class="nav-link" data-scroll-target="#strong-form-of-the-problem">Strong form of the problem</a></li>
+  <li><a href="#weak-forumlation" id="toc-weak-forumlation" class="nav-link" data-scroll-target="#weak-forumlation">Weak forumlation</a></li>
+  <li><a href="#boundary-conditions" id="toc-boundary-conditions" class="nav-link" data-scroll-target="#boundary-conditions">Boundary conditions</a></li>
+  <li><a href="#discretisation" id="toc-discretisation" class="nav-link" data-scroll-target="#discretisation">Discretisation</a></li>
+  </ul></li>
+  <li><a href="#exact-analytical-solution" id="toc-exact-analytical-solution" class="nav-link" data-scroll-target="#exact-analytical-solution">Exact Analytical Solution</a></li>
+  <li><a href="#solving-the-problem-with-different-methods" id="toc-solving-the-problem-with-different-methods" class="nav-link" data-scroll-target="#solving-the-problem-with-different-methods">Solving the problem with different methods</a>
+  <ul class="collapse">
+  <li><a href="#computations" id="toc-computations" class="nav-link" data-scroll-target="#computations">Computations</a></li>
+  <li><a href="#deflection-and-strain-visualisations" id="toc-deflection-and-strain-visualisations" class="nav-link" data-scroll-target="#deflection-and-strain-visualisations">Deflection and Strain Visualisations</a></li>
+  </ul></li>
+  <li><a href="#mesh-convergence-analysis" id="toc-mesh-convergence-analysis" class="nav-link" data-scroll-target="#mesh-convergence-analysis">Mesh Convergence Analysis</a>
+  <ul class="collapse">
+  <li><a href="#constant-body-force" id="toc-constant-body-force" class="nav-link" data-scroll-target="#constant-body-force">Constant Body Force</a></li>
+  <li><a href="#sinusoidal-body-force" id="toc-sinusoidal-body-force" class="nav-link" data-scroll-target="#sinusoidal-body-force">Sinusoidal Body Force</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">1D Linear Elasticity FEM (NumPy)</h1>
+<p class="subtitle lead">1D uniaxial bar under traction and body forces</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="formulation-of-the-problem" class="level1">
+<h1>Formulation of the problem</h1>
+<section id="strong-form-of-the-problem" class="level3">
+<h3 class="anchored" data-anchor-id="strong-form-of-the-problem">Strong form of the problem</h3>
+<p>For a 1D beam under tension-compression, if an external distributed axial force <span class="math inline">\(q(x)\)</span> is applied per unit length, the conservation of linear momentum reads</p>
+<p><span class="math display">\[\frac{\mathrm{d}N}{\mathrm{d}x} + q = 0,\]</span></p>
+<p>where <span class="math inline">\(N(x) = \int_A \sigma \, \mathrm{d}A = \sigma A\)</span> represents the resultant axial force. The kinematics is described using the linearised strain tensor</p>
+<p><span class="math display">\[\varepsilon = \frac{\mathrm{d}u}{\mathrm{d}x} = u'(x),\]</span></p>
+<p>which is proportional to Cauchy stress tensor in linear elasticity, therefore</p>
+<p><span class="math display">\[\sigma = E\varepsilon\]</span>, with <span class="math inline">\(E\)</span> the young modulus of our beam.</p>
+<p>Therefore,</p>
+<p><span class="math display">\[\frac{\mathrm{d}}{\mathrm{d}x}\left(EA \frac{\mathrm{d}u}{\mathrm{d}x}\right) + q = 0\]</span></p>
+<p>Assuming homogeneous material properties and a constant cross-section (<span class="math inline">\(EA = \text{constant}\)</span>), we arrive at your governing beam equation under tension:</p>
+<p><span class="math display">\[E A u''(x) + q = 0\]</span></p>
+<hr>
+</section>
+<section id="weak-forumlation" class="level3">
+<h3 class="anchored" data-anchor-id="weak-forumlation">Weak forumlation</h3>
+<p>We multiply the strong form by a virtual displacement test function <span class="math inline">\(v(x)\in \mathcal{H^p_0\left(\Omega\right)}\)</span> and integrate over the domain <span class="math inline">\([0, L]\)</span>:</p>
+<p><span class="math display">\[\int_0^L v(x) \left[ EA u''(x) + q \right] \mathrm{d}x = 0\]</span></p>
+<p>Applying integration by parts to the second-derivative term:</p>
+<p><span class="math display">\[\left[ v(x) EA u'(x) \right]_0^L - \int_0^L v'(x) EA u'(x) \mathrm{d}x + \int_0^L v(x) q \mathrm{d}x = 0\]</span></p>
+<p>Because <span class="math inline">\(v(x)\)</span> is homegeneous, the weak form reads</p>
+<p><span class="math display">\[\int_0^L EA u'(x) v'(x) \mathrm{d}x = \int_0^L q v(x) \mathrm{d}x\]</span></p>
+<hr>
+</section>
+<section id="boundary-conditions" class="level3">
+<h3 class="anchored" data-anchor-id="boundary-conditions">Boundary conditions</h3>
+<p>We apply Dirichlet boundary conditions at both ends of the beam</p>
+<ul>
+<li><span class="math inline">\(u(x = 0) = u_0\)</span></li>
+<li><span class="math inline">\(u(x = L) = u_L\)</span></li>
+</ul>
+<hr>
+</section>
+<section id="discretisation" class="level3">
+<h3 class="anchored" data-anchor-id="discretisation">Discretisation</h3>
+<p>We discretise the 1D bar of length <span class="math inline">\(L\)</span> with <span class="math inline">\(N_e\)</span> elements.</p>
+<p>We compare linear (<span class="math inline">\(P^1\)</span>) and quadratic (<span class="math inline">\(P^2\)</span>) elements, use different Dirichlet boundary conditions formulations, and analyse convergence rates.</p>
+<div id="7de07dcb" class="cell" data-execution_count="1">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> sys</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> plotly.graph_objects <span class="im">as</span> go</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> plotly.subplots <span class="im">import</span> make_subplots</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Append current working directory to path for imports</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>sys.path.append(os.getcwd())</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fem_lib <span class="im">import</span> assemble_global_system, apply_bc_penalisation, apply_bc_lagrange</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># -------------------------------------------------------------</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Parameter Setup</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co"># -------------------------------------------------------------</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>L  <span class="op">=</span> <span class="fl">2.0</span>            <span class="co"># Length of the bar (m)</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>E  <span class="op">=</span> <span class="fl">2.0e11</span>         <span class="co"># Young's Modulus (Pa) ~ steel</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>A  <span class="op">=</span> <span class="fl">1.0e-4</span>         <span class="co"># Cross-sectional area (m^2)</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>q  <span class="op">=</span> <span class="fl">2e5</span>            <span class="co"># Constant body force (distributed load, N/m)</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>u0 <span class="op">=</span> <span class="fl">0.005</span>          <span class="co"># Imposed displacement at x = 0 (m)</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>uL <span class="op">=</span> <span class="fl">0.015</span>          <span class="co"># Imposed displacement at x = L (m)</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+<section id="exact-analytical-solution" class="level1">
+<h1>Exact Analytical Solution</h1>
+<p>By integrating <span class="math inline">\(E A u''(x) + q = 0\)</span> twice and applying boundary conditions, we get: <span class="math display">\[u_{exact}(x) = -\frac{q}{2EA}x^2 + C_1 x + u_0\]</span> where <span class="math inline">\(C_1 = \frac{u_L - u_0}{L} + \frac{q L}{2EA}\)</span></p>
+<p>The corresponding strain is: <span class="math display">\[\varepsilon_{exact}(x) = u'_{exact}(x) = -\frac{q}{EA}x + C_1\]</span></p>
+<div id="ac461e79" class="cell" data-execution_count="2">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> u_exact(x):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Exact analytical displacement."""</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    C1 <span class="op">=</span> (uL <span class="op">-</span> u0) <span class="op">/</span> L <span class="op">+</span> q <span class="op">*</span> L <span class="op">/</span> (<span class="fl">2.0</span> <span class="op">*</span> E <span class="op">*</span> A)</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">-</span>q <span class="op">/</span> (<span class="fl">2.0</span> <span class="op">*</span> E <span class="op">*</span> A) <span class="op">*</span> x<span class="op">**</span><span class="dv">2</span> <span class="op">+</span> C1 <span class="op">*</span> x <span class="op">+</span> u0</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> eps_exact(x):</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Exact analytical strain."""</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    C1 <span class="op">=</span> (uL <span class="op">-</span> u0) <span class="op">/</span> L <span class="op">+</span> q <span class="op">*</span> L <span class="op">/</span> (<span class="fl">2.0</span> <span class="op">*</span> E <span class="op">*</span> A)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="op">-</span>q <span class="op">/</span> (E <span class="op">*</span> A) <span class="op">*</span> x <span class="op">+</span> C1</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="solving-the-problem-with-different-methods" class="level1">
+<h1>Solving the problem with different methods</h1>
+<p>We solve the problem on a grid with <span class="math inline">\(N_e = 4\)</span> elements using:</p>
+<ol type="1">
+<li><strong>P1 (Linear)</strong> elements with <strong>penalisation</strong></li>
+<li><strong>P1 (Linear)</strong> elements with <strong>Lagrange Multipliers</strong></li>
+<li><strong>P2 (Quadratic)</strong> elements with <strong>penalisation</strong></li>
+<li><strong>P2 (Quadratic)</strong> elements with <strong>Lagrange Multipliers</strong></li>
+</ol>
+<section id="computations" class="level2">
+<h2 class="anchored" data-anchor-id="computations">Computations</h2>
+<div id="dd12d85d" class="cell" data-execution_count="3">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Ne <span class="op">=</span> <span class="dv">4</span>  <span class="co"># Number of elements for the mesh</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">###</span><span class="co"> P1 Elements </span><span class="al">###</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>nodes_p1        <span class="op">=</span> Ne <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>x_p1            <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p1)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>elements_p1     <span class="op">=</span> np.array([[i, i<span class="op">+</span><span class="dv">1</span>] <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(Ne)]) <span class="co"># connectivity table (easy in 1D)</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Assemble</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>K_p1, F_p1      <span class="op">=</span> assemble_global_system(x_p1, elements_p1, <span class="st">"P1"</span>, E, A, q)</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Boundary conditions at both ends</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>fixed_dofs_p1 <span class="op">=</span> [<span class="dv">0</span>, nodes_p1 <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>fixed_vals_p1 <span class="op">=</span> [u0, uL]</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Solve P1 via penalisation</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>K_p1_pen, F_p1_pen <span class="op">=</span> apply_bc_penalisation(K_p1, F_p1, fixed_dofs_p1, fixed_vals_p1, pen_factor<span class="op">=</span><span class="fl">1e12</span>)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>u_p1_pen <span class="op">=</span> np.linalg.solve(K_p1_pen, F_p1_pen)</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Solve P1 via Lagrange Multipliers</span></span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>K_p1_lag, F_p1_lag <span class="op">=</span> apply_bc_lagrange(K_p1, F_p1, fixed_dofs_p1, fixed_vals_p1)</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>sol_p1_lag <span class="op">=</span> np.linalg.solve(K_p1_lag, F_p1_lag)</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>u_p1_lag <span class="op">=</span> sol_p1_lag[:nodes_p1]</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>lambda_p1 <span class="op">=</span> sol_p1_lag[nodes_p1:]</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">###</span><span class="co"> P2 Elements </span><span class="al">###</span></span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>nodes_p2 <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> Ne <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a>x_p2 <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p2)</span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a>elements_p2 <span class="op">=</span> np.array([[<span class="dv">2</span><span class="op">*</span>i, <span class="dv">2</span><span class="op">*</span>i<span class="op">+</span><span class="dv">1</span>, <span class="dv">2</span><span class="op">*</span>i<span class="op">+</span><span class="dv">2</span>] <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(Ne)])</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a><span class="co"># Assemble</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>K_p2, F_p2 <span class="op">=</span> assemble_global_system(x_p2, elements_p2, <span class="st">"P2"</span>, E, A, q)</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-33"><a href="#cb3-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Boundary conditions at both ends</span></span>
+<span id="cb3-34"><a href="#cb3-34" aria-hidden="true" tabindex="-1"></a>fixed_dofs_p2 <span class="op">=</span> [<span class="dv">0</span>, nodes_p2 <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb3-35"><a href="#cb3-35" aria-hidden="true" tabindex="-1"></a>fixed_vals_p2 <span class="op">=</span> [u0, uL]</span>
+<span id="cb3-36"><a href="#cb3-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-37"><a href="#cb3-37" aria-hidden="true" tabindex="-1"></a><span class="co"># Solve P2 via penalisation</span></span>
+<span id="cb3-38"><a href="#cb3-38" aria-hidden="true" tabindex="-1"></a>K_p2_pen, F_p2_pen <span class="op">=</span> apply_bc_penalisation(K_p2, F_p2, fixed_dofs_p2, fixed_vals_p2, pen_factor<span class="op">=</span><span class="fl">1e12</span>)</span>
+<span id="cb3-39"><a href="#cb3-39" aria-hidden="true" tabindex="-1"></a>u_p2_pen <span class="op">=</span> np.linalg.solve(K_p2_pen, F_p2_pen)</span>
+<span id="cb3-40"><a href="#cb3-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-41"><a href="#cb3-41" aria-hidden="true" tabindex="-1"></a><span class="co"># Solve P2 via Lagrange Multipliers</span></span>
+<span id="cb3-42"><a href="#cb3-42" aria-hidden="true" tabindex="-1"></a>K_p2_lag, F_p2_lag <span class="op">=</span> apply_bc_lagrange(K_p2, F_p2, fixed_dofs_p2, fixed_vals_p2)</span>
+<span id="cb3-43"><a href="#cb3-43" aria-hidden="true" tabindex="-1"></a>sol_p2_lag <span class="op">=</span> np.linalg.solve(K_p2_lag, F_p2_lag)</span>
+<span id="cb3-44"><a href="#cb3-44" aria-hidden="true" tabindex="-1"></a>u_p2_lag <span class="op">=</span> sol_p2_lag[:nodes_p2]</span>
+<span id="cb3-45"><a href="#cb3-45" aria-hidden="true" tabindex="-1"></a>lambda_p2 <span class="op">=</span> sol_p2_lag[nodes_p2:]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div id="4b97e1c2" class="cell" data-execution_count="4">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">###</span><span class="co"> Print Verification Results </span><span class="al">###</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"****** DISPLACEMENT AT TIP (x = L) ******"</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Analytical:               </span><span class="sc">{</span>u_exact(L)<span class="sc">:.10f}</span><span class="ss"> m"</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P1 (penalisation):        </span><span class="sc">{</span>u_p1_pen[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.10f}</span><span class="ss"> m"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P1 (Lagrange Multiplier): </span><span class="sc">{</span>u_p1_lag[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.10f}</span><span class="ss"> m"</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P2 (penalisation):        </span><span class="sc">{</span>u_p2_pen[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.10f}</span><span class="ss"> m"</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P2 (Lagrange Multiplier): </span><span class="sc">{</span>u_p2_lag[<span class="op">-</span><span class="dv">1</span>]<span class="sc">:.10f}</span><span class="ss"> m"</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Analytical reaction forces</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>C1 <span class="op">=</span> (uL <span class="op">-</span> u0) <span class="op">/</span> L <span class="op">+</span> q <span class="op">*</span> L <span class="op">/</span> (<span class="fl">2.0</span> <span class="op">*</span> E <span class="op">*</span> A)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>exact_R0 <span class="op">=</span> <span class="op">-</span> E <span class="op">*</span> A <span class="op">*</span> C1</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>exact_RL <span class="op">=</span> E <span class="op">*</span> A <span class="op">*</span> (<span class="op">-</span>q <span class="op">*</span> L <span class="op">/</span> (E <span class="op">*</span> A) <span class="op">+</span> C1)</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">****** REACTION FORCES ******"</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Analytical R0 (x = 0):   </span><span class="sc">{</span>exact_R0<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P1 Lagrange R0 (-λ0):    </span><span class="sc">{</span><span class="op">-</span>lambda_p1[<span class="dv">0</span>]<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P2 Lagrange R0 (-λ0):    </span><span class="sc">{</span><span class="op">-</span>lambda_p2[<span class="dv">0</span>]<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Analytical RL (x = L):   </span><span class="sc">{</span>exact_RL<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P1 Lagrange RL (-λ1):    </span><span class="sc">{</span><span class="op">-</span>lambda_p1[<span class="dv">1</span>]<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"P2 Lagrange RL (-λ1):    </span><span class="sc">{</span><span class="op">-</span>lambda_p2[<span class="dv">1</span>]<span class="sc">:.4e}</span><span class="ss"> N"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>****** DISPLACEMENT AT TIP (x = L) ******
+Analytical:               0.0150000000 m
+P1 (penalisation):        0.0150000000 m
+P1 (Lagrange Multiplier): 0.0150000000 m
+P2 (penalisation):        0.0150000000 m
+P2 (Lagrange Multiplier): 0.0150000000 m
+
+****** REACTION FORCES ******
+Analytical R0 (x = 0):   -3.0000e+05 N
+P1 Lagrange R0 (-λ0):    -3.0000e+05 N
+P2 Lagrange R0 (-λ0):    -3.0000e+05 N
+Analytical RL (x = L):   -1.0000e+05 N
+P1 Lagrange RL (-λ1):    -1.0000e+05 N
+P2 Lagrange RL (-λ1):    -1.0000e+05 N</code></pre>
+</div>
+</div>
+</section>
+<section id="deflection-and-strain-visualisations" class="level2">
+<h2 class="anchored" data-anchor-id="deflection-and-strain-visualisations">Deflection and Strain Visualisations</h2>
+<p>We compare the displacement fields and strain profiles along the beam. - P1 elements produce a piecewise-linear displacement and constant strain step-profile. - P2 elements capture the exact quadratic displacement and linear strain perfectly.</p>
+<div id="556d3272" class="cell" data-execution_count="5">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create subplots</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>fig <span class="op">=</span> make_subplots(</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    rows<span class="op">=</span><span class="dv">2</span>, cols<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    shared_xaxes<span class="op">=</span><span class="va">True</span>,</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    subplot_titles<span class="op">=</span>(<span class="st">"Displacement u(x) [m]"</span>, <span class="st">"Strain ε(x) [-]"</span>),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    vertical_spacing<span class="op">=</span><span class="fl">0.12</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>x_fine <span class="op">=</span> np.linspace(<span class="dv">0</span>, L, <span class="dv">200</span>)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Displacement plots</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_fine, y<span class="op">=</span>u_exact(x_fine), name<span class="op">=</span><span class="st">"Analytical Exact"</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"black"</span>, width<span class="op">=</span><span class="fl">2.5</span>)), row<span class="op">=</span><span class="dv">1</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_p1, y<span class="op">=</span>u_p1_lag, name<span class="op">=</span><span class="st">"P1 (Linear Lagrange)"</span>, mode<span class="op">=</span><span class="st">"lines+markers"</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"#3b82f6"</span>, width<span class="op">=</span><span class="dv">2</span>), marker<span class="op">=</span><span class="bu">dict</span>(size<span class="op">=</span><span class="dv">6</span>)), row<span class="op">=</span><span class="dv">1</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_p2, y<span class="op">=</span>u_p2_lag, name<span class="op">=</span><span class="st">"P2 (Quadratic Lagrange)"</span>, mode<span class="op">=</span><span class="st">"lines+markers"</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"#ef4444"</span>, width<span class="op">=</span><span class="dv">2</span>, dash<span class="op">=</span><span class="st">"dash"</span>), marker<span class="op">=</span><span class="bu">dict</span>(symbol<span class="op">=</span><span class="st">"square"</span>, size<span class="op">=</span><span class="dv">6</span>)), row<span class="op">=</span><span class="dv">1</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Strain traces plots</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_fine, y<span class="op">=</span>eps_exact(x_fine), name<span class="op">=</span><span class="st">"Analytical Strain"</span>, showlegend<span class="op">=</span><span class="va">False</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"black"</span>, width<span class="op">=</span><span class="fl">2.5</span>)), row<span class="op">=</span><span class="dv">2</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co"># P1 element strain (piecewise constant)</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>x_p1_eps <span class="op">=</span> []</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>y_p1_eps <span class="op">=</span> []</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> elem <span class="kw">in</span> elements_p1:</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    x_el <span class="op">=</span> x_p1[elem]</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    Le <span class="op">=</span> x_el[<span class="dv">1</span>] <span class="op">-</span> x_el[<span class="dv">0</span>]</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>    eps_val <span class="op">=</span> (u_p1_lag[elem[<span class="dv">1</span>]] <span class="op">-</span> u_p1_lag[elem[<span class="dv">0</span>]]) <span class="op">/</span> Le</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    x_p1_eps.extend([x_el[<span class="dv">0</span>], x_el[<span class="dv">1</span>]])</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    y_p1_eps.extend([eps_val, eps_val])</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_p1_eps, y<span class="op">=</span>y_p1_eps, name<span class="op">=</span><span class="st">"P1 Strain"</span>, mode<span class="op">=</span><span class="st">"lines"</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"#3b82f6"</span>, width<span class="op">=</span><span class="dv">2</span>, shape<span class="op">=</span><span class="st">"hv"</span>)), row<span class="op">=</span><span class="dv">2</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a><span class="co"># P2 element strain (piecewise linear inside each element)</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>x_p2_eps <span class="op">=</span> []</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>y_p2_eps <span class="op">=</span> []</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> elem <span class="kw">in</span> elements_p2:</span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    x_el <span class="op">=</span> x_p2[elem]</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    Le <span class="op">=</span> x_el[<span class="dv">2</span>] <span class="op">-</span> x_el[<span class="dv">0</span>]</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>    u_el <span class="op">=</span> u_p2_lag[elem]</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Strains at local xi = -1, 0, 1 (boundary and midpoints)</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>    eps_nodes <span class="op">=</span> (<span class="fl">2.0</span> <span class="op">/</span> Le) <span class="op">*</span> np.array([</span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>        <span class="op">-</span><span class="fl">1.5</span> <span class="op">*</span> u_el[<span class="dv">0</span>] <span class="op">+</span> <span class="fl">2.0</span> <span class="op">*</span> u_el[<span class="dv">1</span>] <span class="op">-</span> <span class="fl">0.5</span> <span class="op">*</span> u_el[<span class="dv">2</span>],</span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>        <span class="op">-</span><span class="fl">0.5</span> <span class="op">*</span> u_el[<span class="dv">0</span>] <span class="op">+</span> <span class="fl">0.5</span> <span class="op">*</span> u_el[<span class="dv">2</span>],</span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>         <span class="fl">0.5</span> <span class="op">*</span> u_el[<span class="dv">0</span>] <span class="op">-</span> <span class="fl">2.0</span> <span class="op">*</span> u_el[<span class="dv">1</span>] <span class="op">+</span> <span class="fl">1.5</span> <span class="op">*</span> u_el[<span class="dv">2</span>]</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>    ])</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>    x_p2_eps.extend([x_el[<span class="dv">0</span>], x_el[<span class="dv">1</span>], x_el[<span class="dv">2</span>]])</span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>    y_p2_eps.extend(eps_nodes)</span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>fig.add_trace(go.Scatter(x<span class="op">=</span>x_p2_eps, y<span class="op">=</span>y_p2_eps, name<span class="op">=</span><span class="st">"P2 Strain"</span>, mode<span class="op">=</span><span class="st">"lines+markers"</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">"#ef4444"</span>, width<span class="op">=</span><span class="dv">2</span>, dash<span class="op">=</span><span class="st">"dash"</span>), marker<span class="op">=</span><span class="bu">dict</span>(symbol<span class="op">=</span><span class="st">"square"</span>, size<span class="op">=</span><span class="dv">5</span>)), row<span class="op">=</span><span class="dv">2</span>, col<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>fig.update_layout(</span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"1D Bar Linear Elasticity - Numerical vs Analytical Results"</span>,</span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>    xaxis2_title<span class="op">=</span><span class="st">"Position x [m]"</span>,</span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>    yaxis_title<span class="op">=</span><span class="st">"Displacement u [m]"</span>,</span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>    yaxis2_title<span class="op">=</span><span class="st">"Strain ε [-]"</span>,</span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">750</span>,</span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>    template<span class="op">=</span><span class="st">"plotly_white"</span></span>
+<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>fig.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div style="height:750px; width:100%;">            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.6.0.min.js" integrity="sha256-QaOVwtVY0T02VaHrr6pnoHLCwayMJp4O5n4YyaE3rJk=" crossorigin="anonymous"></script>                <div id="ce1b8f43-1c63-4767-8cfa-f399faf93c66" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("ce1b8f43-1c63-4767-8cfa-f399faf93c66")) {                    Plotly.newPlot(                        "ce1b8f43-1c63-4767-8cfa-f399faf93c66",                        [{"line":{"color":"black","width":2.5},"name":"Analytical Exact","x":{"dtype":"f8","bdata":"AAAAAAAAAABn0LLjOZWEP2fQsuM5lZQ\u002fmjiM1dbfnj9n0LLjOZWkP4GEn1yIuqk\u002fmjiM1dbfrj9adjynkgKyP2fQsuM5lbQ\u002fdCopIOEntz+BhJ9ciLq5P47eFZkvTbw\u002fmjiM1dbfvj9USQEJP7nAP1p2PKeSAsI\u002fYaN3ReZLwz9n0LLjOZXEP2397YGN3sU\u002fdCopIOEnxz96V2S+NHHIP4GEn1yIusk\u002fh7Ha+tsDyz+O3hWZL03MP5QLUTeDls0\u002fmjiM1dbfzj\u002fQsuM5lRTQP1RJAQk\u002fudA\u002f198e2Ohd0T9adjynkgLSP90MWnY8p9I\u002fYaN3ReZL0z\u002fkOZUUkPDTP2fQsuM5ldQ\u002f6mbQsuM51T9t\u002fe2Bjd7VP\u002fGTC1E3g9Y\u002fdCopIOEn1z\u002f3wEbviszXP3pXZL40cdg\u002f\u002fu2Bjd4V2T+BhJ9ciLrZPwQbvSsyX9o\u002fh7Ha+tsD2z8KSPjJhajbP47eFZkvTdw\u002fEXUzaNnx3D+UC1E3g5bdPxeibgYtO94\u002fmjiM1dbf3j8ez6mkgITfP9Cy4zmVFOA\u002fEn5yIepm4D9USQEJP7ngP5UUkPCTC+E\u002f198e2Ohd4T8Zq62\u002fPbDhP1p2PKeSAuI\u002fnEHLjudU4j\u002fdDFp2PKfiPx\u002fY6F2R+eI\u002fYaN3ReZL4z+ibgYtO57jP+Q5lRSQ8OM\u002fJQUk\u002fORC5D9n0LLjOZXkP6mbQcuO5+Q\u002f6mbQsuM55T8sMl+aOIzlP2397YGN3uU\u002fr8h8aeIw5j\u002fxkwtRN4PmPzJfmjiM1eY\u002fdCopIOEn5z+19bcHNnrnP\u002ffARu+KzOc\u002fOYzV1t8e6D96V2S+NHHoP7wi86WJw+g\u002f\u002fu2Bjd4V6T8\u002fuRB1M2jpP4GEn1yIuuk\u002fwk8uRN0M6j8EG70rMl\u002fqP0bmSxOHseo\u002fh7Ha+tsD6z\u002fJfGniMFbrPwpI+MmFqOs\u002fTBOHsdr66z+O3hWZL03sP8+ppICEn+w\u002fEXUzaNnx7D9SQMJPLkTtP5QLUTeDlu0\u002f1tbfHtjo7T8Xom4GLTvuP1lt\u002fe2Bje4\u002fmjiM1dbf7j\u002fcAxu9KzLvPx7PqaSAhO8\u002fX5o4jNXW7z\u002fQsuM5lRTwP3EYq62\u002fPfA\u002fEn5yIepm8D+z4zmVFJDwP1RJAQk\u002fufA\u002f9K7IfGni8D+VFJDwkwvxPzZ6V2S+NPE\u002f198e2Ohd8T94ReZLE4fxPxmrrb89sPE\u002fuRB1M2jZ8T9adjynkgLyP\u002fvbAxu9K\u002fI\u002fnEHLjudU8j89p5ICEn7yP90MWnY8p\u002fI\u002ffnIh6mbQ8j8f2OhdkfnyP8A9sNG7IvM\u002fYaN3ReZL8z8BCT+5EHXzP6JuBi07nvM\u002fQ9TNoGXH8z\u002fkOZUUkPDzP4WfXIi6GfQ\u002fJQUk\u002fORC9D\u002fGautvD2z0P2fQsuM5lfQ\u002fCDZ6V2S+9D+pm0HLjuf0P0kBCT+5EPU\u002f6mbQsuM59T+LzJcmDmP1PywyX5o4jPU\u002fzZcmDmO19T9t\u002fe2Bjd71Pw5jtfW3B\u002fY\u002fr8h8aeIw9j9QLkTdDFr2P\u002fGTC1E3g\u002fY\u002fkfnSxGGs9j8yX5o4jNX2P9PEYay2\u002fvY\u002fdCopIOEn9z8VkPCTC1H3P7X1twc2evc\u002fVlt\u002fe2Cj9z\u002f3wEbvisz3P5gmDmO19fc\u002fOYzV1t8e+D\u002fa8ZxKCkj4P3pXZL40cfg\u002fG70rMl+a+D+8IvOlicP4P12Iuhm07Pg\u002f\u002fu2Bjd4V+T+eU0kBCT\u002f5Pz+5EHUzaPk\u002f4B7Y6F2R+T+BhJ9ciLr5PyLqZtCy4\u002fk\u002fwk8uRN0M+j9jtfW3Bzb6PwQbvSsyX\u002fo\u002fpYCEn1yI+j9G5ksTh7H6P+ZLE4ex2vo\u002fh7Ha+tsD+z8oF6JuBi37P8l8aeIwVvs\u002fauIwVlt\u002f+z8KSPjJhaj7P6utvz2w0fs\u002fTBOHsdr6+z\u002fteE4lBST8P47eFZkvTfw\u002fLkTdDFp2\u002fD\u002fPqaSAhJ\u002f8P3APbPSuyPw\u002fEXUzaNnx\u002fD+y2vrbAxv9P1JAwk8uRP0\u002f86WJw1ht\u002fT+UC1E3g5b9PzVxGKutv\u002f0\u002f1tbfHtjo\u002fT92PKeSAhL+PxeibgYtO\u002f4\u002fuAc2eldk\u002fj9Zbf3tgY3+P\u002frSxGGstv4\u002fmjiM1dbf\u002fj87nlNJAQn\u002fP9wDG70rMv8\u002ffWniMFZb\u002fz8ez6mkgIT\u002fP780cRirrf8\u002fX5o4jNXW\u002fz8AAAAAAAAAQA=="},"y":{"dtype":"f8","bdata":"exSuR+F6dD86ZtxdbRh1P2WMLlDqtHU\u002f\u002fYakHlhQdj8DVj7Jtup2P3X5+08GhHc\u002fVHHdskYceD+gveLxd7N4P1jeCw2aSXk\u002fftNYBK3eeT8QncnXsHJ6PxA7XoelBXs\u002ffK0WE4uXez9V9PJ6YSh8P5oP874ouHw\u002fTv8W3+BGfT9tw17bidR9P\u002flbyrMjYX4\u002f8shZaK7sfj9YCg35KXd\u002fPxYQ8jJLAIA\u002fNoVv13lEgD+M5P7pIIiAPxkuoGpAy4A\u002f3GFTWdgNgT\u002fWfxi26E+BPwaI74BxkYE\u002fbXrYuXLSgT8KV9Ng7BKCP90d4HXeUoI\u002f587++EiSgj8oai\u002fqK9GCP57vcUmHD4M\u002fS1\u002fGFltNgz8uuSxSp4qDP0j9pPtrx4M\u002fmCsvE6kDhD8gRMuYXj+EP9xGeYyMeoQ\u002f0DM57jK1hD\u002f6Cgu+Ue+EP1vM7vvoKIU\u002f8nfkp\u002fhhhT\u002fADezBgJqFP8SNBUqB0oU\u002f\u002fvcwQPoJhj9uTG6k60CGPxaLvXZVd4Y\u002f87Metzethj8Ix5FlkuKGP1LEFoJlF4c\u002f0qutDLFLhz+KfVYFdX+HP3g5EWyxsoc\u002fnN\u002fdQGblhz\u002f3b7yDkxeIP4jqrDQ5SYg\u002fUE+vU1d6iD9OnsPg7aqIP4LX6dv82og\u002f7fohRYQKiT+OCGwchDmJP2YAyGH8Z4k\u002fcuI1Fe2ViT+4rrU2VsOJPzJlR8Y38Ik\u002f5AXrw5Ecij\u002fMkKAvZEiKP+oFaAmvc4o\u002fPmVBUXKeij\u002fKriwHrsiKP4ziKSti8oo\u002fggA5vY4biz+yCFq9M0SLPxb7jCtRbIs\u002fstfRB+eTiz+CnihS9bqLP4xPkQp84Ys\u002fyuoLMXsHjD9AcJjF8iyMP+rfNsjiUYw\u002fzDnnOEt2jD\u002fkfakXLJqMPzSsfWSFvYw\u002fuMRjH1fgjD90x1tIoQKNP2a0Zd9jJI0\u002fjouB5J5FjT\u002fuTK9XUmaNP4L47jh+ho0\u002fTo5AiCKmjT9QDqRFP8WNP4h4GXHU440\u002f+MygCuIBjj+eCzoSaB+OP3o05YdmPI4\u002fjEeia91Yjj\u002fURHG9zHSOP1QsUn00kI4\u002fCv5EqxSrjj\u002f0uUlHbcWOPxhgYFE+344\u002fcPCIyYf4jj8Aa8OvSRGPP8bPDwSEKY8\u002fwh5uxjZBjz\u002f0V972YViPP1x7YJUFb48\u002f\u002foj0oSGFjz\u002fUgJoctpqPP+BiUgXDr48\u002fIi8cXEjEjz+c5fcgRtiPP0yG5VO8648\u002fMhHl9Kr+jz8mQ\u002fsBiQiQP9DyjMB4EZA\u002flZcntiQakD91McvijCKQP3DAd0axKpA\u002fh0Qt4ZEykD+4veuyLjqQPwQss7uHQZA\u002fbI+D+5xIkD\u002fw51xybk+QP441PyD8VZA\u002fR3gqBUZckD8csB4hTGKQPw3dG3QOaJA\u002fGP8h\u002foxtkD8+FjG\u002fx3KQP38iSbe+d5A\u002f3SNq5nF8kD9VGpRM4YCQP+gFx+kMhZA\u002fl+YCvvSIkD9hvEfJmIyQP0aHlQv5j5A\u002fRkfshBWTkD9h\u002fEs17pWQP5imtByDmJA\u002f6kUmO9SakD9X2qCQ4ZyQP99jJB2rnpA\u002fguKw4DCgkD9CVkbbcqGQPxy\u002f5AxxopA\u002fEB2MdSujkD8gcDwVoqOQP0249evUo5A\u002fk\u002fW3+cOjkD\u002f1J4M+b6OQP3JPV7rWopA\u002fC2w0bfqhkD+\u002ffRpX2qCQP42ECXh2n5A\u002fd4AB0M6dkD99cQJf45uQP55XDCW0mZA\u002f2TIfIkGXkD8wAztWipSQP6PIX8GPkZA\u002fMIONY1GOkD\u002fYMsQ8z4qQP5vXA00Jh5A\u002fe3FMlP+CkD92AJ4Ssn6QP4qE+McgepA\u002fu\u002f1btEt1kD8IbMjXMnCQP2\u002fPPTLWapA\u002f8Se8wzVlkD+OdUOMUV+QP0e404spWZA\u002fG\u002fBswr1SkD8KHQ8wDkyQPxU\u002futQaRZA\u002fO1ZusOM9kD98YivDaDaQP9hj8QyqLpA\u002fT1rAjacmkD\u002fiRZhFYR6QP48meTTXFZA\u002fWPxiWgkNkD88x1W39wOQP3gOo5ZE9Y8\u002frHisLBLijz8YzccwWM6PP7oL9aIWuo8\u002fkjQ0g02ljz+gR4XR\u002fI+PP+ZE6I0keo8\u002fYixduMRjjz8U\u002fuNQ3UyPP\u002f65fFduNY8\u002fHGAnzHcdjz9w8OOu+QSPP\u002fxqsv\u002fz644\u002fwM+SvmbSjj+4HoXrUbiOPw=="},"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"#3b82f6","width":2},"marker":{"size":6},"mode":"lines+markers","name":"P1 (Linear Lagrange)","x":{"dtype":"f8","bdata":"AAAAAAAAAAAAAAAAAADgPwAAAAAAAPA\u002fAAAAAAAA+D8AAAAAAAAAQA=="},"y":{"dtype":"f8","bdata":"ehSuR+F6dD8K16NwPQqHP7gehetRuI4\u002fpHA9CtejkD+4HoXrUbiOPw=="},"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"#ef4444","dash":"dash","width":2},"marker":{"size":6,"symbol":"square"},"mode":"lines+markers","name":"P2 (Quadratic Lagrange)","x":{"dtype":"f8","bdata":"AAAAAAAAAAAAAAAAAADQPwAAAAAAAOA\u002fAAAAAAAA6D8AAAAAAADwPwAAAAAAAPQ\u002fAAAAAAAA+D8AAAAAAAD8PwAAAAAAAABA"},"y":{"dtype":"f8","bdata":"dBSuR+F6dD9I4XoUrkeBPw7Xo3A9Coc\u002fi+tRuB6Fiz\u002fAHoXrUbiOP1W4HoXrUZA\u002fpnA9CtejkD9TuB6F61GQP7gehetRuI4\u002f"},"type":"scatter","xaxis":"x","yaxis":"y"},{"line":{"color":"black","width":2.5},"name":"Analytical Strain","showlegend":false,"x":{"dtype":"f8","bdata":"AAAAAAAAAABn0LLjOZWEP2fQsuM5lZQ\u002fmjiM1dbfnj9n0LLjOZWkP4GEn1yIuqk\u002fmjiM1dbfrj9adjynkgKyP2fQsuM5lbQ\u002fdCopIOEntz+BhJ9ciLq5P47eFZkvTbw\u002fmjiM1dbfvj9USQEJP7nAP1p2PKeSAsI\u002fYaN3ReZLwz9n0LLjOZXEP2397YGN3sU\u002fdCopIOEnxz96V2S+NHHIP4GEn1yIusk\u002fh7Ha+tsDyz+O3hWZL03MP5QLUTeDls0\u002fmjiM1dbfzj\u002fQsuM5lRTQP1RJAQk\u002fudA\u002f198e2Ohd0T9adjynkgLSP90MWnY8p9I\u002fYaN3ReZL0z\u002fkOZUUkPDTP2fQsuM5ldQ\u002f6mbQsuM51T9t\u002fe2Bjd7VP\u002fGTC1E3g9Y\u002fdCopIOEn1z\u002f3wEbviszXP3pXZL40cdg\u002f\u002fu2Bjd4V2T+BhJ9ciLrZPwQbvSsyX9o\u002fh7Ha+tsD2z8KSPjJhajbP47eFZkvTdw\u002fEXUzaNnx3D+UC1E3g5bdPxeibgYtO94\u002fmjiM1dbf3j8ez6mkgITfP9Cy4zmVFOA\u002fEn5yIepm4D9USQEJP7ngP5UUkPCTC+E\u002f198e2Ohd4T8Zq62\u002fPbDhP1p2PKeSAuI\u002fnEHLjudU4j\u002fdDFp2PKfiPx\u002fY6F2R+eI\u002fYaN3ReZL4z+ibgYtO57jP+Q5lRSQ8OM\u002fJQUk\u002fORC5D9n0LLjOZXkP6mbQcuO5+Q\u002f6mbQsuM55T8sMl+aOIzlP2397YGN3uU\u002fr8h8aeIw5j\u002fxkwtRN4PmPzJfmjiM1eY\u002fdCopIOEn5z+19bcHNnrnP\u002ffARu+KzOc\u002fOYzV1t8e6D96V2S+NHHoP7wi86WJw+g\u002f\u002fu2Bjd4V6T8\u002fuRB1M2jpP4GEn1yIuuk\u002fwk8uRN0M6j8EG70rMl\u002fqP0bmSxOHseo\u002fh7Ha+tsD6z\u002fJfGniMFbrPwpI+MmFqOs\u002fTBOHsdr66z+O3hWZL03sP8+ppICEn+w\u002fEXUzaNnx7D9SQMJPLkTtP5QLUTeDlu0\u002f1tbfHtjo7T8Xom4GLTvuP1lt\u002fe2Bje4\u002fmjiM1dbf7j\u002fcAxu9KzLvPx7PqaSAhO8\u002fX5o4jNXW7z\u002fQsuM5lRTwP3EYq62\u002fPfA\u002fEn5yIepm8D+z4zmVFJDwP1RJAQk\u002fufA\u002f9K7IfGni8D+VFJDwkwvxPzZ6V2S+NPE\u002f198e2Ohd8T94ReZLE4fxPxmrrb89sPE\u002fuRB1M2jZ8T9adjynkgLyP\u002fvbAxu9K\u002fI\u002fnEHLjudU8j89p5ICEn7yP90MWnY8p\u002fI\u002ffnIh6mbQ8j8f2OhdkfnyP8A9sNG7IvM\u002fYaN3ReZL8z8BCT+5EHXzP6JuBi07nvM\u002fQ9TNoGXH8z\u002fkOZUUkPDzP4WfXIi6GfQ\u002fJQUk\u002fORC9D\u002fGautvD2z0P2fQsuM5lfQ\u002fCDZ6V2S+9D+pm0HLjuf0P0kBCT+5EPU\u002f6mbQsuM59T+LzJcmDmP1PywyX5o4jPU\u002fzZcmDmO19T9t\u002fe2Bjd71Pw5jtfW3B\u002fY\u002fr8h8aeIw9j9QLkTdDFr2P\u002fGTC1E3g\u002fY\u002fkfnSxGGs9j8yX5o4jNX2P9PEYay2\u002fvY\u002fdCopIOEn9z8VkPCTC1H3P7X1twc2evc\u002fVlt\u002fe2Cj9z\u002f3wEbvisz3P5gmDmO19fc\u002fOYzV1t8e+D\u002fa8ZxKCkj4P3pXZL40cfg\u002fG70rMl+a+D+8IvOlicP4P12Iuhm07Pg\u002f\u002fu2Bjd4V+T+eU0kBCT\u002f5Pz+5EHUzaPk\u002f4B7Y6F2R+T+BhJ9ciLr5PyLqZtCy4\u002fk\u002fwk8uRN0M+j9jtfW3Bzb6PwQbvSsyX\u002fo\u002fpYCEn1yI+j9G5ksTh7H6P+ZLE4ex2vo\u002fh7Ha+tsD+z8oF6JuBi37P8l8aeIwVvs\u002fauIwVlt\u002f+z8KSPjJhaj7P6utvz2w0fs\u002fTBOHsdr6+z\u002fteE4lBST8P47eFZkvTfw\u002fLkTdDFp2\u002fD\u002fPqaSAhJ\u002f8P3APbPSuyPw\u002fEXUzaNnx\u002fD+y2vrbAxv9P1JAwk8uRP0\u002f86WJw1ht\u002fT+UC1E3g5b9PzVxGKutv\u002f0\u002f1tbfHtjo\u002fT92PKeSAhL+PxeibgYtO\u002f4\u002fuAc2eldk\u002fj9Zbf3tgY3+P\u002frSxGGstv4\u002fmjiM1dbf\u002fj87nlNJAQn\u002fP9wDG70rMv8\u002ffWniMFZb\u002fz8ez6mkgIT\u002fP780cRirrf8\u002fX5o4jNXW\u002fz8AAAAAAAAAQA=="},"y":{"dtype":"f8","bdata":"uB6F61G4jj\u002fgpnuzoIOOPwgvcnvvTo4\u002fMLdoQz4ajj9YP18LjeWNP4DHVdPbsI0\u002fqE9Mmyp8jT\u002fQ10JjeUeNP\u002fdfOSvIEo0\u002fH+gv8xbejD9HcCa7ZamMP2\u002f4HIO0dIw\u002fl4ATSwNAjD+\u002fCAoTUguMP+eQANug1os\u002fDxn3ou+hiz83oe1qPm2LP18p5DKNOIs\u002fh7Ha+tsDiz+vOdHCKs+KP9bBx4p5moo\u002f\u002fkm+Ushlij8m0rQaFzGKP05aq+Jl\u002fIk\u002fduKhqrTHiT+eaphyA5OJP8byjjpSXok\u002f7nqFAqEpiT8WA3zK7\u002fSIPz6LcpI+wIg\u002fZhNpWo2LiD+Om18i3FaIP7YjVuoqIog\u002f3qtMsnnthz8GNEN6yLiHPy68OUIXhIc\u002fVkQwCmZPhz9+zCbStBqHP6ZUHZoD5oY\u002fzdwTYlKxhj\u002f1ZAoqoXyGPx3tAPLvR4Y\u002fRXX3uT4Thj9t\u002fe2Bjd6FP5SF5EncqYU\u002fvA3bESt1hT\u002fkldHZeUCFPwweyKHIC4U\u002fNKa+aRfXhD9cLrUxZqKEP4S2q\u002fm0bYQ\u002frD6iwQM5hD\u002fUxpiJUgSEP\u002fxOj1Ghz4M\u002fJNeFGfCagz9MX3zhPmaDP3TncqmNMYM\u002fnG9pcdz8gj\u002fE9185K8iCP+x\u002fVgF6k4I\u002fFAhNychegj88kEORFyqCP2QYOllm9YE\u002fjKAwIbXAgT+0KCfpA4yBP9uwHbFSV4E\u002fBDkUeaEigT8rwQpB8O2AP1RJAQk\u002fuYA\u002fe9H30I2EgD+jWe6Y3E+AP8vh5GArG4A\u002f5tO2UfTMfz825KPhkWN\u002fP4b0kHEv+n4\u002f1QR+Ac2Qfj8mFWuRaid+P3UlWCEIvn0\u002fxDVFsaVUfT8URjJBQ+t8P2RWH9HggXw\u002ftGYMYX4YfD8Ed\u002fnwG697P1SH5oC5RXs\u002fpJfTEFfcej\u002f0p8Cg9HJ6P0S4rTCSCXo\u002flMiawC+geT\u002fi2IdQzTZ5PzTpdOBqzXg\u002fgvlhcAhkeD\u002fUCU8Apvp3PyIaPJBDkXc\u002fciopIOEndz\u002fCOhawfr52PxJLA0AcVXY\u002fYlvwz7nrdT+ya91fV4J1PwJ8yu\u002f0GHU\u002fUoy3f5KvdD+inKQPMEZ0P\u002fKskZ\u002fN3HM\u002fQr1+L2tzcz+SzWu\u002fCApzP+DdWE+moHI\u002fMu5F30M3cj+C\u002fjJv4c1xP9IOIP9+ZHE\u002fIB8Njxz7cD9wL\u002foeupFwP8A\u002f565XKHA\u002fJKCofep9bz\u002fAwIKdJatuP2DhXL1g2G0\u002fAAI33ZsFbT+cIhH91jJsP0BD6xwSYGs\u002f4GPFPE2Naj+AhJ9ciLppPxyleXzD52g\u002fvMVTnP4UaD9g5i28OUJnPwAHCNx0b2Y\u002fnCfi+6+cZT88SLwb68lkP9xoljsm92M\u002fgIlwW2EkYz8cqkp7nFFiP7zKJJvXfmE\u002fXOv+uhKsYD\u002fwF7K1m7JfPzhZZvURDV4\u002feJoaNYhnXD+42850\u002fsFaP\u002fAcg7R0HFk\u002fMF439Op2Vz94n+szYdFVP7jgn3PXK1Q\u002f8CFUs02GUj8wYwjzw+BQP+BIeWV0dk4\u002fcMvh5GArSz\u002fgTUpkTeBHP2DQsuM5lUQ\u002f4FIbYyZKQT+gqgfFJf47P8Cv2MP+ZzU\u002fgGlTha+jLT+Ac\u002fWCYXcgPwDquwScWPo+gPGMA3XCE7\u002fAbiSEiA0nv0AyQUPrHDK\u002fYC1wRBKzOL9gKJ9FOUk\u002fv7ARZyOw70K\u002fQI\u002f+o8M6Rr+gDJYk14VJv0CKLaXq0Ey\u002f4IPiEv8NUL+gQi7TiLNRv2ABepMSWVO\u002fIMDFU5z+VL\u002fgfhEUJqRWv6A9XdSvSVi\u002fYPyolDnvWb8gu\u002fRUw5Rbv+B5QBVNOl2\u002foDiM1dbfXr+w++tKsEJgvxDbESt1FWG\u002fcLo3CzroYb\u002fQmV3r\u002frpivzB5g8vDjWO\u002fkFipq4hgZL\u002fwN8+LTTNlv1gX9WsSBma\u002fsPYaTNfYZr8Q1kAsnKtnv3C1Zgxhfmi\u002f2JSM7CVRab84dLLM6iNqv5BT2Kyv9mq\u002f8DL+jHTJa79YEiRtOZxsv7jxSU3+bm2\u002fGNFvLcNBbr9wsJUNiBRvv9iPu+1M52+\u002fnLfw5ghdcL9MpwNXa8Zwv\u002fyWFsfNL3G\u002frIYpNzCZcb9cdjynkgJyvwxmTxf1a3K\u002fvFVih1fVcr9sRXX3uT5zvxw1iGccqHO\u002fzCSb134RdL98FK5H4Xp0vw=="},"type":"scatter","xaxis":"x2","yaxis":"y2"},{"line":{"color":"#3b82f6","shape":"hv","width":2},"mode":"lines","name":"P1 Strain","x":[0.0,0.5,0.5,1.0,1.0,1.5,1.5,2.0],"y":[0.0125,0.0125,0.0075,0.0075,0.0025000000000000022,0.0025000000000000022,-0.0025000000000000022,-0.0025000000000000022],"type":"scatter","xaxis":"x2","yaxis":"y2"},{"line":{"color":"#ef4444","dash":"dash","width":2},"marker":{"size":5,"symbol":"square"},"mode":"lines+markers","name":"P2 Strain","x":[0.0,0.25,0.5,0.5,0.75,1.0,1.0,1.25,1.5,1.5,1.75,2.0],"y":[0.015000000000000027,0.012500000000000025,0.010000000000000016,0.010000000000000023,0.007500000000000014,0.0050000000000000044,0.0049999999999999906,0.0024999999999999883,-1.3877787807814457e-17,-1.3877787807814457e-17,-0.002500000000000016,-0.005000000000000018],"type":"scatter","xaxis":"x2","yaxis":"y2"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"anchor":"y","domain":[0.0,1.0],"matches":"x2","showticklabels":false},"yaxis":{"anchor":"x","domain":[0.56,1.0],"title":{"text":"Displacement u [m]"}},"xaxis2":{"anchor":"y2","domain":[0.0,1.0],"title":{"text":"Position x [m]"}},"yaxis2":{"anchor":"x2","domain":[0.0,0.44],"title":{"text":"Strain \u03b5 [-]"}},"annotations":[{"font":{"size":16},"showarrow":false,"text":"Displacement u(x) [m]","x":0.5,"xanchor":"center","xref":"paper","y":1.0,"yanchor":"bottom","yref":"paper"},{"font":{"size":16},"showarrow":false,"text":"Strain \u03b5(x) [-]","x":0.5,"xanchor":"center","xref":"paper","y":0.44,"yanchor":"bottom","yref":"paper"}],"title":{"text":"1D Bar Linear Elasticity - Numerical vs Analytical Results"},"height":750},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('ce1b8f43-1c63-4767-8cfa-f399faf93c66');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+</div>
+</section>
+</section>
+<section id="mesh-convergence-analysis" class="level1">
+<h1>Mesh Convergence Analysis</h1>
+<p>We run the P1 and P2 element solvers on a sequence of refined meshes: <span class="math display">\[N_e \in \{4, 8, 16, 32, 64\}\]</span> We compute the <span class="math inline">\(L^2\)</span> error norm for displacements using a 3-point Gauss quadrature: <span class="math display">\[\text{Error}_{L^2} = \sqrt{\int_0^L (u_{exact}(x) - u_h(x))^2 \, \mathrm{d}x}\]</span></p>
+<p>Different loading conditions are studied.</p>
+<section id="constant-body-force" class="level3">
+<h3 class="anchored" data-anchor-id="constant-body-force">Constant Body Force</h3>
+<section id="solve" class="level4">
+<h4 class="anchored" data-anchor-id="solve">Solve</h4>
+<div id="deccf263" class="cell" data-execution_count="6">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fem_lib <span class="im">import</span> gauss_quadrature, shape_functions</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> compute_l2_error(x_nodes, elements, element_type, u_numeric, u_exact_fn):</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Computes the exact L2 error norm using Gauss-Legendre quadrature."""</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    error_sq <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    xi_g, w_g <span class="op">=</span> gauss_quadrature(<span class="dv">3</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> elem <span class="kw">in</span> elements:</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>        x_el <span class="op">=</span> x_nodes[elem]</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>        x_start <span class="op">=</span> x_el[<span class="dv">0</span>]</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>        x_end <span class="op">=</span> x_el[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>        Le <span class="op">=</span> x_end <span class="op">-</span> x_start</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        J <span class="op">=</span> Le <span class="op">/</span> <span class="fl">2.0</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        u_el <span class="op">=</span> u_numeric[elem]</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> xi, w <span class="kw">in</span> <span class="bu">zip</span>(xi_g, w_g):</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>            N, _ <span class="op">=</span> shape_functions(element_type, xi)</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>            u_h_val <span class="op">=</span> np.dot(N, u_el)</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>            x_val <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> (x_start <span class="op">+</span> x_end) <span class="op">+</span> J <span class="op">*</span> xi</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>            u_ex_val <span class="op">=</span> u_exact_fn(x_val)</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>            error_sq <span class="op">+=</span> (u_ex_val <span class="op">-</span> u_h_val)<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> J <span class="op">*</span> w</span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sqrt(error_sq)</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> compute_energy_error(x_nodes, elements, element_type, u_numeric, E_val, A_val, eps_exact_fn):</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Computes the exact energy error norm using Gauss-Legendre quadrature."""</span></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>    error_sq <span class="op">=</span> <span class="fl">0.0</span></span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a>    xi_g, w_g <span class="op">=</span> gauss_quadrature(<span class="dv">3</span>)</span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> elem <span class="kw">in</span> elements:</span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a>        x_el <span class="op">=</span> x_nodes[elem]</span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a>        x_start <span class="op">=</span> x_el[<span class="dv">0</span>]</span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a>        x_end <span class="op">=</span> x_el[<span class="op">-</span><span class="dv">1</span>]</span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a>        Le <span class="op">=</span> x_end <span class="op">-</span> x_start</span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>        J <span class="op">=</span> Le <span class="op">/</span> <span class="fl">2.0</span></span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>        u_el <span class="op">=</span> u_numeric[elem]</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a>        </span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> xi, w <span class="kw">in</span> <span class="bu">zip</span>(xi_g, w_g):</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>            _, dN_dxi <span class="op">=</span> shape_functions(element_type, xi)</span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>            duh_dx <span class="op">=</span> np.dot(dN_dxi, u_el) <span class="op">/</span> J</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>            x_val <span class="op">=</span> <span class="fl">0.5</span> <span class="op">*</span> (x_start <span class="op">+</span> x_end) <span class="op">+</span> J <span class="op">*</span> xi</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>            E_p <span class="op">=</span> E_val(x_val) <span class="cf">if</span> <span class="bu">callable</span>(E_val) <span class="cf">else</span> E_val</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a>            A_p <span class="op">=</span> A_val(x_val) <span class="cf">if</span> <span class="bu">callable</span>(A_val) <span class="cf">else</span> A_val</span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-48"><a href="#cb7-48" aria-hidden="true" tabindex="-1"></a>            duex_dx <span class="op">=</span> eps_exact_fn(x_val)</span>
+<span id="cb7-49"><a href="#cb7-49" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-50"><a href="#cb7-50" aria-hidden="true" tabindex="-1"></a>            error_sq <span class="op">+=</span> E_p <span class="op">*</span> A_p <span class="op">*</span> (duex_dx <span class="op">-</span> duh_dx)<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> J <span class="op">*</span> w</span>
+<span id="cb7-51"><a href="#cb7-51" aria-hidden="true" tabindex="-1"></a>            </span>
+<span id="cb7-52"><a href="#cb7-52" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> np.sqrt(error_sq)</span>
+<span id="cb7-53"><a href="#cb7-53" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-54"><a href="#cb7-54" aria-hidden="true" tabindex="-1"></a><span class="co"># Run convergence study for constant body force</span></span>
+<span id="cb7-55"><a href="#cb7-55" aria-hidden="true" tabindex="-1"></a>N_list <span class="op">=</span> [<span class="dv">4</span>, <span class="dv">8</span>, <span class="dv">16</span>, <span class="dv">32</span>, <span class="dv">64</span>]</span>
+<span id="cb7-56"><a href="#cb7-56" aria-hidden="true" tabindex="-1"></a>h_list <span class="op">=</span> []</span>
+<span id="cb7-57"><a href="#cb7-57" aria-hidden="true" tabindex="-1"></a>errors_p1 <span class="op">=</span> []</span>
+<span id="cb7-58"><a href="#cb7-58" aria-hidden="true" tabindex="-1"></a>errors_p2 <span class="op">=</span> []</span>
+<span id="cb7-59"><a href="#cb7-59" aria-hidden="true" tabindex="-1"></a>energy_errors_p1 <span class="op">=</span> []</span>
+<span id="cb7-60"><a href="#cb7-60" aria-hidden="true" tabindex="-1"></a>energy_errors_p2 <span class="op">=</span> []</span>
+<span id="cb7-61"><a href="#cb7-61" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-62"><a href="#cb7-62" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, Ne_loop <span class="kw">in</span> <span class="bu">enumerate</span>(N_list):</span>
+<span id="cb7-63"><a href="#cb7-63" aria-hidden="true" tabindex="-1"></a>    h <span class="op">=</span> L <span class="op">/</span> Ne_loop</span>
+<span id="cb7-64"><a href="#cb7-64" aria-hidden="true" tabindex="-1"></a>    h_list.append(h)</span>
+<span id="cb7-65"><a href="#cb7-65" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-66"><a href="#cb7-66" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Solve P1</span></span>
+<span id="cb7-67"><a href="#cb7-67" aria-hidden="true" tabindex="-1"></a>    nodes_p1_loop <span class="op">=</span> Ne_loop <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb7-68"><a href="#cb7-68" aria-hidden="true" tabindex="-1"></a>    x_p1_loop <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p1_loop)</span>
+<span id="cb7-69"><a href="#cb7-69" aria-hidden="true" tabindex="-1"></a>    elements_p1_loop <span class="op">=</span> np.array([[j, j<span class="op">+</span><span class="dv">1</span>] <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(Ne_loop)])</span>
+<span id="cb7-70"><a href="#cb7-70" aria-hidden="true" tabindex="-1"></a>    K_p1_l, F_p1_l <span class="op">=</span> assemble_global_system(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, E, A, q)</span>
+<span id="cb7-71"><a href="#cb7-71" aria-hidden="true" tabindex="-1"></a>    fixed_dofs_p1_l <span class="op">=</span> [<span class="dv">0</span>, nodes_p1_loop <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb7-72"><a href="#cb7-72" aria-hidden="true" tabindex="-1"></a>    fixed_vals_p1_l <span class="op">=</span> [u0, uL]</span>
+<span id="cb7-73"><a href="#cb7-73" aria-hidden="true" tabindex="-1"></a>    K_p1_lag_l, F_p1_lag_l <span class="op">=</span> apply_bc_lagrange(K_p1_l, F_p1_l, fixed_dofs_p1_l, fixed_vals_p1_l)</span>
+<span id="cb7-74"><a href="#cb7-74" aria-hidden="true" tabindex="-1"></a>    sol_p1 <span class="op">=</span> np.linalg.solve(K_p1_lag_l, F_p1_lag_l)</span>
+<span id="cb7-75"><a href="#cb7-75" aria-hidden="true" tabindex="-1"></a>    u_p1_sol <span class="op">=</span> sol_p1[:nodes_p1_loop]</span>
+<span id="cb7-76"><a href="#cb7-76" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-77"><a href="#cb7-77" aria-hidden="true" tabindex="-1"></a>    err_p1 <span class="op">=</span> compute_l2_error(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, u_p1_sol, u_exact)</span>
+<span id="cb7-78"><a href="#cb7-78" aria-hidden="true" tabindex="-1"></a>    errors_p1.append(err_p1)</span>
+<span id="cb7-79"><a href="#cb7-79" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-80"><a href="#cb7-80" aria-hidden="true" tabindex="-1"></a>    en_err_p1 <span class="op">=</span> compute_energy_error(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, u_p1_sol, E, A, eps_exact)</span>
+<span id="cb7-81"><a href="#cb7-81" aria-hidden="true" tabindex="-1"></a>    energy_errors_p1.append(en_err_p1)</span>
+<span id="cb7-82"><a href="#cb7-82" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-83"><a href="#cb7-83" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Solve P2</span></span>
+<span id="cb7-84"><a href="#cb7-84" aria-hidden="true" tabindex="-1"></a>    nodes_p2_loop <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> Ne_loop <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb7-85"><a href="#cb7-85" aria-hidden="true" tabindex="-1"></a>    x_p2_loop <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p2_loop)</span>
+<span id="cb7-86"><a href="#cb7-86" aria-hidden="true" tabindex="-1"></a>    elements_p2_loop <span class="op">=</span> np.array([[<span class="dv">2</span><span class="op">*</span>j, <span class="dv">2</span><span class="op">*</span>j<span class="op">+</span><span class="dv">1</span>, <span class="dv">2</span><span class="op">*</span>j<span class="op">+</span><span class="dv">2</span>] <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(Ne_loop)])</span>
+<span id="cb7-87"><a href="#cb7-87" aria-hidden="true" tabindex="-1"></a>    K_p2_l, F_p2_l <span class="op">=</span> assemble_global_system(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, E, A, q)</span>
+<span id="cb7-88"><a href="#cb7-88" aria-hidden="true" tabindex="-1"></a>    fixed_dofs_p2_l <span class="op">=</span> [<span class="dv">0</span>, nodes_p2_loop <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb7-89"><a href="#cb7-89" aria-hidden="true" tabindex="-1"></a>    fixed_vals_p2_l <span class="op">=</span> [u0, uL]</span>
+<span id="cb7-90"><a href="#cb7-90" aria-hidden="true" tabindex="-1"></a>    K_p2_lag_l, F_p2_lag_l <span class="op">=</span> apply_bc_lagrange(K_p2_l, F_p2_l, fixed_dofs_p2_l, fixed_vals_p2_l)</span>
+<span id="cb7-91"><a href="#cb7-91" aria-hidden="true" tabindex="-1"></a>    sol_p2 <span class="op">=</span> np.linalg.solve(K_p2_lag_l, F_p2_lag_l)</span>
+<span id="cb7-92"><a href="#cb7-92" aria-hidden="true" tabindex="-1"></a>    u_p2_sol <span class="op">=</span> sol_p2[:nodes_p2_loop]</span>
+<span id="cb7-93"><a href="#cb7-93" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-94"><a href="#cb7-94" aria-hidden="true" tabindex="-1"></a>    err_p2 <span class="op">=</span> compute_l2_error(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, u_p2_sol, u_exact)</span>
+<span id="cb7-95"><a href="#cb7-95" aria-hidden="true" tabindex="-1"></a>    errors_p2.append(err_p2)</span>
+<span id="cb7-96"><a href="#cb7-96" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb7-97"><a href="#cb7-97" aria-hidden="true" tabindex="-1"></a>    en_err_p2 <span class="op">=</span> compute_energy_error(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, u_p2_sol, E, A, eps_exact)</span>
+<span id="cb7-98"><a href="#cb7-98" aria-hidden="true" tabindex="-1"></a>    energy_errors_p2.append(en_err_p2)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="plots" class="level4">
+<h4 class="anchored" data-anchor-id="plots">Plots</h4>
+<div id="afb7b60b" class="cell" data-execution_count="7">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># L2 Displacement Error Plot</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>fig_conv_l2 <span class="op">=</span> go.Figure()</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>errors_p1, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P1 - L2 Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#3b82f6'</span>, width<span class="op">=</span><span class="dv">3</span>)))</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>errors_p2, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P2 - L2 Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#ef4444'</span>, width<span class="op">=</span><span class="dv">3</span>)))</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>h_ref <span class="op">=</span> np.array(h_list)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>y_ref_p1_l2 <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> errors_p1[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>y_ref_p2_l2 <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">3</span> <span class="op">*</span> errors_p1[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">3</span>)</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p1_l2, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^2) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p2_l2, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^3) Reference (for comparison)'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dot'</span>)))</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.update_layout(</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"1D Bar NumPy FEM - L2 Displacement Error Convergence (Constant Body Force)"</span>,</span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>    xaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Mesh Size h = L/Ne"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>, autorange<span class="op">=</span><span class="st">"reversed"</span>),</span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>    yaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"L2 displacement error [m]"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>),</span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>    template<span class="op">=</span><span class="st">"plotly_white"</span>,</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">550</span></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>fig_conv_l2.show()</span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Energy Error Plot</span></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>fig_conv_en <span class="op">=</span> go.Figure()</span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a>fig_conv_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>energy_errors_p1, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P1 - Energy Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#60a5fa'</span>, width<span class="op">=</span><span class="dv">3</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a>fig_conv_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>energy_errors_p2, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P2 - Energy Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#f87171'</span>, width<span class="op">=</span><span class="dv">3</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb8-25"><a href="#cb8-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-26"><a href="#cb8-26" aria-hidden="true" tabindex="-1"></a>y_ref_p1_en <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">1</span> <span class="op">*</span> energy_errors_p1[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">1</span>)</span>
+<span id="cb8-27"><a href="#cb8-27" aria-hidden="true" tabindex="-1"></a>y_ref_p2_en <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> energy_errors_p1[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb8-28"><a href="#cb8-28" aria-hidden="true" tabindex="-1"></a>fig_conv_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p1_en, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^1) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb8-29"><a href="#cb8-29" aria-hidden="true" tabindex="-1"></a>fig_conv_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p2_en, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^2) Reference (for comparison)'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dot'</span>)))</span>
+<span id="cb8-30"><a href="#cb8-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-31"><a href="#cb8-31" aria-hidden="true" tabindex="-1"></a>fig_conv_en.update_layout(</span>
+<span id="cb8-32"><a href="#cb8-32" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"1D Bar NumPy FEM - Energy Error Convergence (Constant Body Force)"</span>,</span>
+<span id="cb8-33"><a href="#cb8-33" aria-hidden="true" tabindex="-1"></a>    xaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Mesh Size h = L/Ne"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>, autorange<span class="op">=</span><span class="st">"reversed"</span>),</span>
+<span id="cb8-34"><a href="#cb8-34" aria-hidden="true" tabindex="-1"></a>    yaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Energy error [J^(1/2)]"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>),</span>
+<span id="cb8-35"><a href="#cb8-35" aria-hidden="true" tabindex="-1"></a>    template<span class="op">=</span><span class="st">"plotly_white"</span>,</span>
+<span id="cb8-36"><a href="#cb8-36" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">550</span></span>
+<span id="cb8-37"><a href="#cb8-37" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb8-38"><a href="#cb8-38" aria-hidden="true" tabindex="-1"></a>fig_conv_en.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div style="height:550px; width:100%;">            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.6.0.min.js" integrity="sha256-QaOVwtVY0T02VaHrr6pnoHLCwayMJp4O5n4YyaE3rJk=" crossorigin="anonymous"></script>                <div id="6bd5d07e-b9a4-4832-b15d-c8a42d2b0179" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("6bd5d07e-b9a4-4832-b15d-c8a42d2b0179")) {                    Plotly.newPlot(                        "6bd5d07e-b9a4-4832-b15d-c8a42d2b0179",                        [{"line":{"color":"#3b82f6","width":3},"mode":"lines+markers","name":"P1 - L2 Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[0.00032274861218395157,8.068715304598782e-05,2.017178826149755e-05,5.042947065385024e-06,1.2607367663674167e-06],"type":"scatter"},{"line":{"color":"#ef4444","width":3},"mode":"lines+markers","name":"P2 - L2 Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[1.0701367756823225e-17,2.6347476064756873e-17,1.9387853760700543e-16,7.639879740005312e-16,1.9021074898949e-15],"type":"scatter"},{"line":{"color":"gray","dash":"dash","width":1.5},"mode":"lines","name":"O(h^2) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"09\u002fxu9ImNT\u002fT3\u002fG70iYVP9Pf8bvSJvU+09\u002fxu9Im1T7T3\u002fG70ia1Pg=="},"type":"scatter"},{"line":{"color":"gray","dash":"dot","width":1.5},"mode":"lines","name":"O(h^3) Reference (for comparison)","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"09\u002fxu9ImNT\u002fT3\u002fG70iYFP9Pf8bvSJtU+09\u002fxu9ImpT7T3\u002fG70iZ1Pg=="},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"title":{"text":"Mesh Size h = L\u002fNe"},"type":"log","autorange":"reversed"},"yaxis":{"title":{"text":"L2 displacement error [m]"},"type":"log"},"title":{"text":"1D Bar NumPy FEM - L2 Displacement Error Convergence (Constant Body Force)"},"height":550},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('6bd5d07e-b9a4-4832-b15d-c8a42d2b0179');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+<div class="cell-output cell-output-display">
+<div style="height:550px; width:100%;">            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.6.0.min.js" integrity="sha256-QaOVwtVY0T02VaHrr6pnoHLCwayMJp4O5n4YyaE3rJk=" crossorigin="anonymous"></script>                <div id="e0e49dcf-2c6d-456a-8de7-f048ca9df18b" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("e0e49dcf-2c6d-456a-8de7-f048ca9df18b")) {                    Plotly.newPlot(                        "e0e49dcf-2c6d-456a-8de7-f048ca9df18b",                        [{"line":{"color":"#60a5fa","dash":"dash","width":3},"mode":"lines+markers","name":"P1 - Energy Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[9.128709291752768,4.564354645876382,2.2821773229381903,1.141088661469095,0.57054433073455],"type":"scatter"},{"line":{"color":"#f87171","dash":"dash","width":3},"mode":"lines+markers","name":"P2 - Energy Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[1.1773989657519363e-13,1.9952724182856718e-13,1.4721431440444373e-12,6.72045581451455e-12,2.0450428870431188e-11],"type":"scatter"},{"line":{"color":"gray","dash":"dash","width":1.5},"mode":"lines","name":"O(h^1) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"94ktL+ZBIkD3iS0v5kESQPeJLS\u002fmQQJA94ktL+ZB8j\u002f3iS0v5kHiPw=="},"type":"scatter"},{"line":{"color":"gray","dash":"dot","width":1.5},"mode":"lines","name":"O(h^2) Reference (for comparison)","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"94ktL+ZBIkD3iS0v5kECQPeJLS\u002fmQeI\u002f94ktL+ZBwj\u002f3iS0v5kGiPw=="},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"title":{"text":"Mesh Size h = L\u002fNe"},"type":"log","autorange":"reversed"},"yaxis":{"title":{"text":"Energy error [J^(1\u002f2)]"},"type":"log"},"title":{"text":"1D Bar NumPy FEM - Energy Error Convergence (Constant Body Force)"},"height":550},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('e0e49dcf-2c6d-456a-8de7-f048ca9df18b');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+</div>
+<p><strong>Remark: Polynomial Reproduction &amp; Machine Precision</strong></p>
+<ol type="1">
+<li><strong>P1 (Linear) elements</strong> show clear convergence rates:
+<ul>
+<li><strong>L2 Displacement Error</strong>: Converges at <span class="math inline">\(\mathcal{O}(h^2)\)</span> as expected.</li>
+<li><strong>Energy Error</strong>: Converges at <span class="math inline">\(\mathcal{O}(h^1)\)</span> (matches the derivative/strain accuracy).</li>
+</ul></li>
+<li><strong>P2 (Quadratic) elements</strong> do not show convergence trends because the exact displacement solution is a quadratic polynomial, which <span class="math inline">\(P^2\)</span> shape functions span exactly. Thus, both the displacement (<span class="math inline">\(P^2\)</span>) and its derivative (<span class="math inline">\(P^1\)</span> strain) are reproduced exactly up to double-precision machine limits (<span class="math inline">\(\approx 10^{-16}\)</span>).</li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="sinusoidal-body-force" class="level3">
+<h3 class="anchored" data-anchor-id="sinusoidal-body-force">Sinusoidal Body Force</h3>
+<p>To demonstrate the theoretical convergence rates when the exact solution is <em>not</em> a low-order polynomial, we now apply a sinusoidal body force: <span class="math display">\[q(x) = q_0 \sin\left(\frac{\pi x}{L}\right)\]</span></p>
+<p>Integrating <span class="math inline">\(E A u''(x) + q(x) = 0\)</span> twice with boundary conditions <span class="math inline">\(u(0) = u_0\)</span> and <span class="math inline">\(u(L) = u_L\)</span> yields the exact solution: <span class="math display">\[u_{\text{exact}}(x) = \frac{q_0 L^2}{\pi^2 E A} \sin\left(\frac{\pi x}{L}\right) + \frac{u_L - u_0}{L}x + u_0\]</span></p>
+<section id="solve-1" class="level4">
+<h4 class="anchored" data-anchor-id="solve-1">Solve</h4>
+<div id="a8553c6a" class="cell" data-execution_count="8">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>q0 <span class="op">=</span> <span class="fl">2e5</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> u_exact_sin(x):</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Exact analytical displacement for sinusoidal body force."""</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (q0 <span class="op">*</span> L<span class="op">**</span><span class="dv">2</span>) <span class="op">/</span> (np.pi<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> E <span class="op">*</span> A) <span class="op">*</span> np.sin(np.pi <span class="op">*</span> x <span class="op">/</span> L) <span class="op">+</span> ((uL <span class="op">-</span> u0) <span class="op">/</span> L) <span class="op">*</span> x <span class="op">+</span> u0</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> eps_exact_sin(x):</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Exact analytical strain for sinusoidal body force."""</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> (q0 <span class="op">*</span> L) <span class="op">/</span> (np.pi <span class="op">*</span> E <span class="op">*</span> A) <span class="op">*</span> np.cos(np.pi <span class="op">*</span> x <span class="op">/</span> L) <span class="op">+</span> (uL <span class="op">-</span> u0) <span class="op">/</span> L</span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> q_sin_func(x):</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Sinusoidal body force function."""</span></span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> q0 <span class="op">*</span> np.sin(np.pi <span class="op">*</span> x <span class="op">/</span> L)</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Run convergence study with sinusoidal force</span></span>
+<span id="cb9-16"><a href="#cb9-16" aria-hidden="true" tabindex="-1"></a>errors_p1_sin <span class="op">=</span> []</span>
+<span id="cb9-17"><a href="#cb9-17" aria-hidden="true" tabindex="-1"></a>errors_p2_sin <span class="op">=</span> []</span>
+<span id="cb9-18"><a href="#cb9-18" aria-hidden="true" tabindex="-1"></a>energy_errors_p1_sin <span class="op">=</span> []</span>
+<span id="cb9-19"><a href="#cb9-19" aria-hidden="true" tabindex="-1"></a>energy_errors_p2_sin <span class="op">=</span> []</span>
+<span id="cb9-20"><a href="#cb9-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-21"><a href="#cb9-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-22"><a href="#cb9-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-23"><a href="#cb9-23" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i, Ne_loop <span class="kw">in</span> <span class="bu">enumerate</span>(N_list):</span>
+<span id="cb9-24"><a href="#cb9-24" aria-hidden="true" tabindex="-1"></a>    h <span class="op">=</span> L <span class="op">/</span> Ne_loop</span>
+<span id="cb9-25"><a href="#cb9-25" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-26"><a href="#cb9-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Solve P1</span></span>
+<span id="cb9-27"><a href="#cb9-27" aria-hidden="true" tabindex="-1"></a>    nodes_p1_loop <span class="op">=</span> Ne_loop <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb9-28"><a href="#cb9-28" aria-hidden="true" tabindex="-1"></a>    x_p1_loop <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p1_loop)</span>
+<span id="cb9-29"><a href="#cb9-29" aria-hidden="true" tabindex="-1"></a>    elements_p1_loop <span class="op">=</span> np.array([[j, j<span class="op">+</span><span class="dv">1</span>] <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(Ne_loop)])</span>
+<span id="cb9-30"><a href="#cb9-30" aria-hidden="true" tabindex="-1"></a>    K_p1_l, F_p1_l <span class="op">=</span> assemble_global_system(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, E, A, q_sin_func)</span>
+<span id="cb9-31"><a href="#cb9-31" aria-hidden="true" tabindex="-1"></a>    fixed_dofs_p1_l <span class="op">=</span> [<span class="dv">0</span>, nodes_p1_loop <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb9-32"><a href="#cb9-32" aria-hidden="true" tabindex="-1"></a>    fixed_vals_p1_l <span class="op">=</span> [u0, uL]</span>
+<span id="cb9-33"><a href="#cb9-33" aria-hidden="true" tabindex="-1"></a>    K_p1_lag_l, F_p1_lag_l <span class="op">=</span> apply_bc_lagrange(K_p1_l, F_p1_l, fixed_dofs_p1_l, fixed_vals_p1_l)</span>
+<span id="cb9-34"><a href="#cb9-34" aria-hidden="true" tabindex="-1"></a>    sol_p1 <span class="op">=</span> np.linalg.solve(K_p1_lag_l, F_p1_lag_l)</span>
+<span id="cb9-35"><a href="#cb9-35" aria-hidden="true" tabindex="-1"></a>    u_p1_sol <span class="op">=</span> sol_p1[:nodes_p1_loop]</span>
+<span id="cb9-36"><a href="#cb9-36" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-37"><a href="#cb9-37" aria-hidden="true" tabindex="-1"></a>    err_p1 <span class="op">=</span> compute_l2_error(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, u_p1_sol, u_exact_sin)</span>
+<span id="cb9-38"><a href="#cb9-38" aria-hidden="true" tabindex="-1"></a>    errors_p1_sin.append(err_p1)</span>
+<span id="cb9-39"><a href="#cb9-39" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-40"><a href="#cb9-40" aria-hidden="true" tabindex="-1"></a>    en_err_p1 <span class="op">=</span> compute_energy_error(x_p1_loop, elements_p1_loop, <span class="st">"P1"</span>, u_p1_sol, E, A, eps_exact_sin)</span>
+<span id="cb9-41"><a href="#cb9-41" aria-hidden="true" tabindex="-1"></a>    energy_errors_p1_sin.append(en_err_p1)</span>
+<span id="cb9-42"><a href="#cb9-42" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-43"><a href="#cb9-43" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Solve P2</span></span>
+<span id="cb9-44"><a href="#cb9-44" aria-hidden="true" tabindex="-1"></a>    nodes_p2_loop <span class="op">=</span> <span class="dv">2</span> <span class="op">*</span> Ne_loop <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb9-45"><a href="#cb9-45" aria-hidden="true" tabindex="-1"></a>    x_p2_loop <span class="op">=</span> np.linspace(<span class="fl">0.0</span>, L, nodes_p2_loop)</span>
+<span id="cb9-46"><a href="#cb9-46" aria-hidden="true" tabindex="-1"></a>    elements_p2_loop <span class="op">=</span> np.array([[<span class="dv">2</span><span class="op">*</span>j, <span class="dv">2</span><span class="op">*</span>j<span class="op">+</span><span class="dv">1</span>, <span class="dv">2</span><span class="op">*</span>j<span class="op">+</span><span class="dv">2</span>] <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(Ne_loop)])</span>
+<span id="cb9-47"><a href="#cb9-47" aria-hidden="true" tabindex="-1"></a>    K_p2_l, F_p2_l <span class="op">=</span> assemble_global_system(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, E, A, q_sin_func)</span>
+<span id="cb9-48"><a href="#cb9-48" aria-hidden="true" tabindex="-1"></a>    fixed_dofs_p2_l <span class="op">=</span> [<span class="dv">0</span>, nodes_p2_loop <span class="op">-</span> <span class="dv">1</span>]</span>
+<span id="cb9-49"><a href="#cb9-49" aria-hidden="true" tabindex="-1"></a>    fixed_vals_p2_l <span class="op">=</span> [u0, uL]</span>
+<span id="cb9-50"><a href="#cb9-50" aria-hidden="true" tabindex="-1"></a>    K_p2_lag_l, F_p2_lag_l <span class="op">=</span> apply_bc_lagrange(K_p2_l, F_p2_l, fixed_dofs_p2_l, fixed_vals_p2_l)</span>
+<span id="cb9-51"><a href="#cb9-51" aria-hidden="true" tabindex="-1"></a>    sol_p2 <span class="op">=</span> np.linalg.solve(K_p2_lag_l, F_p2_lag_l)</span>
+<span id="cb9-52"><a href="#cb9-52" aria-hidden="true" tabindex="-1"></a>    u_p2_sol <span class="op">=</span> sol_p2[:nodes_p2_loop]</span>
+<span id="cb9-53"><a href="#cb9-53" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-54"><a href="#cb9-54" aria-hidden="true" tabindex="-1"></a>    err_p2 <span class="op">=</span> compute_l2_error(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, u_p2_sol, u_exact_sin)</span>
+<span id="cb9-55"><a href="#cb9-55" aria-hidden="true" tabindex="-1"></a>    errors_p2_sin.append(err_p2)</span>
+<span id="cb9-56"><a href="#cb9-56" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb9-57"><a href="#cb9-57" aria-hidden="true" tabindex="-1"></a>    en_err_p2 <span class="op">=</span> compute_energy_error(x_p2_loop, elements_p2_loop, <span class="st">"P2"</span>, u_p2_sol, E, A, eps_exact_sin)</span>
+<span id="cb9-58"><a href="#cb9-58" aria-hidden="true" tabindex="-1"></a>    energy_errors_p2_sin.append(en_err_p2)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="plots-1" class="level4">
+<h4 class="anchored" data-anchor-id="plots-1">Plots</h4>
+<div id="16853fb7" class="cell" data-execution_count="9">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># L2 Displacement Error Plot</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2 <span class="op">=</span> go.Figure()</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>errors_p1_sin, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P1 - L2 Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#3b82f6'</span>, width<span class="op">=</span><span class="dv">3</span>)))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>errors_p2_sin, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P2 - L2 Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#ef4444'</span>, width<span class="op">=</span><span class="dv">3</span>)))</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>y_ref_p1_l2_sin <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> errors_p1_sin[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>y_ref_p2_l2_sin <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">3</span> <span class="op">*</span> errors_p2_sin[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">3</span>)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p1_l2_sin, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^2) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p2_l2_sin, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^3) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dot'</span>)))</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.update_layout(</span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"1D Bar NumPy FEM - L2 Displacement Error Convergence (Sinusoidal Body Force)"</span>,</span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a>    xaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Mesh Size h = L/Ne"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>, autorange<span class="op">=</span><span class="st">"reversed"</span>),</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>    yaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"L2 displacement error [m]"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>),</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>    template<span class="op">=</span><span class="st">"plotly_white"</span>,</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">550</span></span>
+<span id="cb10-17"><a href="#cb10-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-18"><a href="#cb10-18" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_l2.show()</span>
+<span id="cb10-19"><a href="#cb10-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-20"><a href="#cb10-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Energy Error Plot</span></span>
+<span id="cb10-21"><a href="#cb10-21" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en <span class="op">=</span> go.Figure()</span>
+<span id="cb10-22"><a href="#cb10-22" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>energy_errors_p1_sin, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P1 - Energy Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#60a5fa'</span>, width<span class="op">=</span><span class="dv">3</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb10-23"><a href="#cb10-23" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>energy_errors_p2_sin, mode<span class="op">=</span><span class="st">'lines+markers'</span>, name<span class="op">=</span><span class="st">'P2 - Energy Error'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'#f87171'</span>, width<span class="op">=</span><span class="dv">3</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb10-24"><a href="#cb10-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-25"><a href="#cb10-25" aria-hidden="true" tabindex="-1"></a>y_ref_p1_en_sin <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">1</span> <span class="op">*</span> energy_errors_p1_sin[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">1</span>)</span>
+<span id="cb10-26"><a href="#cb10-26" aria-hidden="true" tabindex="-1"></a>y_ref_p2_en_sin <span class="op">=</span> <span class="fl">1.0</span> <span class="op">*</span> h_ref<span class="op">**</span><span class="dv">2</span> <span class="op">*</span> energy_errors_p2_sin[<span class="dv">0</span>] <span class="op">/</span> (h_list[<span class="dv">0</span>]<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb10-27"><a href="#cb10-27" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p1_en_sin, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^1) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dash'</span>)))</span>
+<span id="cb10-28"><a href="#cb10-28" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.add_trace(go.Scatter(x<span class="op">=</span>h_list, y<span class="op">=</span>y_ref_p2_en_sin, mode<span class="op">=</span><span class="st">'lines'</span>, name<span class="op">=</span><span class="st">'O(h^2) Reference'</span>, line<span class="op">=</span><span class="bu">dict</span>(color<span class="op">=</span><span class="st">'gray'</span>, width<span class="op">=</span><span class="fl">1.5</span>, dash<span class="op">=</span><span class="st">'dot'</span>)))</span>
+<span id="cb10-29"><a href="#cb10-29" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-30"><a href="#cb10-30" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.update_layout(</span>
+<span id="cb10-31"><a href="#cb10-31" aria-hidden="true" tabindex="-1"></a>    title<span class="op">=</span><span class="st">"1D Bar NumPy FEM - Energy Error Convergence (Sinusoidal Body Force)"</span>,</span>
+<span id="cb10-32"><a href="#cb10-32" aria-hidden="true" tabindex="-1"></a>    xaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Mesh Size h = L/Ne"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>, autorange<span class="op">=</span><span class="st">"reversed"</span>),</span>
+<span id="cb10-33"><a href="#cb10-33" aria-hidden="true" tabindex="-1"></a>    yaxis<span class="op">=</span><span class="bu">dict</span>(title<span class="op">=</span><span class="st">"Energy error [J^(1/2)]"</span>, <span class="bu">type</span><span class="op">=</span><span class="st">"log"</span>),</span>
+<span id="cb10-34"><a href="#cb10-34" aria-hidden="true" tabindex="-1"></a>    template<span class="op">=</span><span class="st">"plotly_white"</span>,</span>
+<span id="cb10-35"><a href="#cb10-35" aria-hidden="true" tabindex="-1"></a>    height<span class="op">=</span><span class="dv">550</span></span>
+<span id="cb10-36"><a href="#cb10-36" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-37"><a href="#cb10-37" aria-hidden="true" tabindex="-1"></a>fig_conv_sin_en.show()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-display">
+<div style="height:550px; width:100%;">            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.6.0.min.js" integrity="sha256-QaOVwtVY0T02VaHrr6pnoHLCwayMJp4O5n4YyaE3rJk=" crossorigin="anonymous"></script>                <div id="bd4a3714-2bb6-498c-b192-ed5944eb9eac" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("bd4a3714-2bb6-498c-b192-ed5944eb9eac")) {                    Plotly.newPlot(                        "bd4a3714-2bb6-498c-b192-ed5944eb9eac",                        [{"line":{"color":"#3b82f6","width":3},"mode":"lines+markers","name":"P1 - L2 Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[0.00022520544325255786,5.6865308307253695e-05,1.4251774494414224e-05,3.5651622453211203e-06,8.914292746522254e-07],"type":"scatter"},{"line":{"color":"#ef4444","width":3},"mode":"lines+markers","name":"P2 - L2 Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[9.358325337389979e-06,1.1780758405182847e-06,1.4752027253211147e-07,1.8448198478548728e-08,2.306280038715808e-09],"type":"scatter"},{"line":{"color":"gray","dash":"dash","width":1.5},"mode":"lines","name":"O(h^2) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"3UD9BqSELT\u002fdQP0GpIQNP91A\u002fQakhO0+3UD9BqSEzT7dQP0GpIStPg=="},"type":"scatter"},{"line":{"color":"gray","dash":"dot","width":1.5},"mode":"lines","name":"O(h^3) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"EZDMcDag4z4RkMxwNqCzPhGQzHA2oIM+EZDMcDagUz4RkMxwNqAjPg=="},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"title":{"text":"Mesh Size h = L\u002fNe"},"type":"log","autorange":"reversed"},"yaxis":{"title":{"text":"L2 displacement error [m]"},"type":"log"},"title":{"text":"1D Bar NumPy FEM - L2 Displacement Error Convergence (Sinusoidal Body Force)"},"height":550},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('bd4a3714-2bb6-498c-b192-ed5944eb9eac');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+<div class="cell-output cell-output-display">
+<div style="height:550px; width:100%;">            <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js?config=TeX-AMS-MML_SVG"></script><script>if (window.MathJax && window.MathJax.Hub && window.MathJax.Hub.Config) {window.MathJax.Hub.Config({SVG: {font: "STIX-Web"}});}</script>                <script>window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+        <script charset="utf-8" src="https://cdn.plot.ly/plotly-3.6.0.min.js" integrity="sha256-QaOVwtVY0T02VaHrr6pnoHLCwayMJp4O5n4YyaE3rJk=" crossorigin="anonymous"></script>                <div id="8a6adf0a-2de9-4a85-8457-d4e5c406a15b" class="plotly-graph-div" style="height:100%; width:100%;"></div>            <script>                window.PLOTLYENV=window.PLOTLYENV || {};                                if (document.getElementById("8a6adf0a-2de9-4a85-8457-d4e5c406a15b")) {                    Plotly.newPlot(                        "8a6adf0a-2de9-4a85-8457-d4e5c406a15b",                        [{"line":{"color":"#60a5fa","dash":"dash","width":3},"mode":"lines+markers","name":"P1 - Energy Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[6.388984257326083,3.21920252727049,1.6127065128979212,0.8067419276075691,0.4034195637998591],"type":"scatter"},{"line":{"color":"#f87171","dash":"dash","width":3},"mode":"lines+markers","name":"P2 - Energy Error","x":[0.5,0.25,0.125,0.0625,0.03125],"y":[0.6494674864972712,0.16330944860113758,0.04088644488456103,0.010225306566540632,0.002556557642466578],"type":"scatter"},{"line":{"color":"gray","dash":"dash","width":1.5},"mode":"lines","name":"O(h^1) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"XH+f41GOGUBcf5\u002fjUY4JQFx\u002fn+NRjvk\u002fXH+f41GO6T9cf5\u002fjUY7ZPw=="},"type":"scatter"},{"line":{"color":"gray","dash":"dot","width":1.5},"mode":"lines","name":"O(h^2) Reference","x":[0.5,0.25,0.125,0.0625,0.03125],"y":{"dtype":"f8","bdata":"dkbKCXDI5D92RsoJcMjEP3ZGyglwyKQ\u002fdkbKCXDIhD92RsoJcMhkPw=="},"type":"scatter"}],                        {"template":{"data":{"barpolar":[{"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"barpolar"}],"bar":[{"error_x":{"color":"#2a3f5f"},"error_y":{"color":"#2a3f5f"},"marker":{"line":{"color":"white","width":0.5},"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"bar"}],"carpet":[{"aaxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"baxis":{"endlinecolor":"#2a3f5f","gridcolor":"#C8D4E3","linecolor":"#C8D4E3","minorgridcolor":"#C8D4E3","startlinecolor":"#2a3f5f"},"type":"carpet"}],"choropleth":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"choropleth"}],"contourcarpet":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"contourcarpet"}],"contour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"contour"}],"heatmap":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"heatmap"}],"histogram2dcontour":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2dcontour"}],"histogram2d":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"histogram2d"}],"histogram":[{"marker":{"pattern":{"fillmode":"overlay","size":10,"solidity":0.2}},"type":"histogram"}],"mesh3d":[{"colorbar":{"outlinewidth":0,"ticks":""},"type":"mesh3d"}],"parcoords":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"parcoords"}],"pie":[{"automargin":true,"type":"pie"}],"scatter3d":[{"line":{"colorbar":{"outlinewidth":0,"ticks":""}},"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatter3d"}],"scattercarpet":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattercarpet"}],"scattergeo":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergeo"}],"scattergl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattergl"}],"scattermapbox":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermapbox"}],"scattermap":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scattermap"}],"scatterpolargl":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolargl"}],"scatterpolar":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterpolar"}],"scatter":[{"fillpattern":{"fillmode":"overlay","size":10,"solidity":0.2},"type":"scatter"}],"scatterternary":[{"marker":{"colorbar":{"outlinewidth":0,"ticks":""}},"type":"scatterternary"}],"surface":[{"colorbar":{"outlinewidth":0,"ticks":""},"colorscale":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"type":"surface"}],"table":[{"cells":{"fill":{"color":"#EBF0F8"},"line":{"color":"white"}},"header":{"fill":{"color":"#C8D4E3"},"line":{"color":"white"}},"type":"table"}]},"layout":{"annotationdefaults":{"arrowcolor":"#2a3f5f","arrowhead":0,"arrowwidth":1},"autotypenumbers":"strict","coloraxis":{"colorbar":{"outlinewidth":0,"ticks":""}},"colorscale":{"diverging":[[0,"#8e0152"],[0.1,"#c51b7d"],[0.2,"#de77ae"],[0.3,"#f1b6da"],[0.4,"#fde0ef"],[0.5,"#f7f7f7"],[0.6,"#e6f5d0"],[0.7,"#b8e186"],[0.8,"#7fbc41"],[0.9,"#4d9221"],[1,"#276419"]],"sequential":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]],"sequentialminus":[[0.0,"#0d0887"],[0.1111111111111111,"#46039f"],[0.2222222222222222,"#7201a8"],[0.3333333333333333,"#9c179e"],[0.4444444444444444,"#bd3786"],[0.5555555555555556,"#d8576b"],[0.6666666666666666,"#ed7953"],[0.7777777777777778,"#fb9f3a"],[0.8888888888888888,"#fdca26"],[1.0,"#f0f921"]]},"colorway":["#636efa","#EF553B","#00cc96","#ab63fa","#FFA15A","#19d3f3","#FF6692","#B6E880","#FF97FF","#FECB52"],"font":{"color":"#2a3f5f"},"geo":{"bgcolor":"white","lakecolor":"white","landcolor":"white","showlakes":true,"showland":true,"subunitcolor":"#C8D4E3"},"hoverlabel":{"align":"left"},"hovermode":"closest","mapbox":{"style":"light"},"margin":{"b":0,"l":0,"r":0,"t":30},"paper_bgcolor":"white","plot_bgcolor":"white","polar":{"angularaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""},"bgcolor":"white","radialaxis":{"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":""}},"scene":{"xaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"yaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"},"zaxis":{"backgroundcolor":"white","gridcolor":"#DFE8F3","gridwidth":2,"linecolor":"#EBF0F8","showbackground":true,"ticks":"","zerolinecolor":"#EBF0F8"}},"shapedefaults":{"line":{"color":"#2a3f5f"}},"ternary":{"aaxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"baxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""},"bgcolor":"white","caxis":{"gridcolor":"#DFE8F3","linecolor":"#A2B1C6","ticks":""}},"title":{"x":0.05},"xaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2},"yaxis":{"automargin":true,"gridcolor":"#EBF0F8","linecolor":"#EBF0F8","ticks":"","title":{"standoff":15},"zerolinecolor":"#EBF0F8","zerolinewidth":2}}},"xaxis":{"title":{"text":"Mesh Size h = L\u002fNe"},"type":"log","autorange":"reversed"},"yaxis":{"title":{"text":"Energy error [J^(1\u002f2)]"},"type":"log"},"title":{"text":"1D Bar NumPy FEM - Energy Error Convergence (Sinusoidal Body Force)"},"height":550},                        {"responsive": true}                    ).then(function(){
+                            
+var gd = document.getElementById('8a6adf0a-2de9-4a85-8457-d4e5c406a15b');
+var x = new MutationObserver(function (mutations, observer) {{
+        var display = window.getComputedStyle(gd).display;
+        if (!display || display === 'none') {{
+            console.log([gd, 'removed!']);
+            Plotly.purge(gd);
+            observer.disconnect();
+        }}
+}});
+
+// Listen for the removal of the full notebook cells
+var notebookContainer = gd.closest('#notebook-container');
+if (notebookContainer) {{
+    x.observe(notebookContainer, {childList: true});
+}}
+
+// Listen for the clearing of the current output cell
+var outputEl = gd.closest('.output');
+if (outputEl) {{
+    x.observe(outputEl, {childList: true});
+}}
+
+                        })                };            </script>        </div>
+</div>
+</div>
+
+
+</section>
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    // Ensure there is a toggle, if there isn't float one in the top right
+    if (window.document.querySelector('.quarto-color-scheme-toggle') === null) {
+      const a = window.document.createElement('a');
+      a.classList.add('top-right');
+      a.classList.add('quarto-color-scheme-toggle');
+      a.href = "";
+      a.onclick = function() { try { window.quartoToggleColorScheme(); } catch {} return false; };
+      const i = window.document.createElement("i");
+      i.classList.add('bi');
+      a.appendChild(i);
+      window.document.body.appendChild(a);
+    }
+    setColorSchemeToggle(hasAlternateSentinel())
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+<script type="application/javascript" src="custom_hal.js"></script>
+
+
+
+
+</body></html>
