@@ -288,13 +288,17 @@ window.Quarto = {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item dropdown ">
-    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-d-finite-element-analysis" role="link" data-bs-toggle="dropdown" aria-expanded="false">
- <span class="menu-text">1D Finite Element Analysis</span>
+    <a class="nav-link dropdown-toggle" href="#" id="nav-menu-d2d-numpy-finite-element-analysis" role="link" data-bs-toggle="dropdown" aria-expanded="false">
+ <span class="menu-text">1D/2D NumPy Finite Element Analysis</span>
     </a>
-    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-d-finite-element-analysis">    
+    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="nav-menu-d2d-numpy-finite-element-analysis">    
         <li>
     <a class="dropdown-item" href="./01_truss_numpy.html">
  <span class="dropdown-text">Numpy assembly and solve</span></a>
+  </li>  
+        <li>
+    <a class="dropdown-item" href="./01b_triangle_numpy.html">
+ <span class="dropdown-text">2D element integration</span></a>
   </li>  
         <li>
     <a class="dropdown-item" href="./02_truss_jax.qmd">
@@ -342,7 +346,7 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#d-finite-element-analysis" id="toc-d-finite-element-analysis" class="nav-link active" data-scroll-target="#d-finite-element-analysis">1. 1D Finite Element Analysis</a></li>
+  <li><a href="#d2d-finite-element-analysis" id="toc-d2d-finite-element-analysis" class="nav-link active" data-scroll-target="#d2d-finite-element-analysis">1. 1D/2D Finite Element Analysis</a></li>
   <li><a href="#d3d-fenics-applications" id="toc-d3d-fenics-applications" class="nav-link" data-scroll-target="#d3d-fenics-applications">2. 2D/3D FEniCS Applications</a></li>
   </ul>
 </nav>
@@ -373,8 +377,8 @@ window.Quarto = {
 
 <p>This website hosts a self-contained, interactive lab exercises on the Finite Element Method (FEM) for undergraduate and graduate courses at <strong>ENSTA, Institut Polytechnique de Paris</strong>.</p>
 <p>The lab work is structured into two main parts:</p>
-<section id="d-finite-element-analysis" class="level3">
-<h3 class="anchored" data-anchor-id="d-finite-element-analysis">1. 1D Finite Element Analysis</h3>
+<section id="d2d-finite-element-analysis" class="level3">
+<h3 class="anchored" data-anchor-id="d2d-finite-element-analysis">1. 1D/2D Finite Element Analysis</h3>
 <p>Solved from scratch using pure python, comparing linear and quadratic elements:</p>
 <ul>
 <li><strong><a href="./01_truss_numpy.html">NumPy/SciPy Solver</a></strong>: A modular solver from scratch. Illustrates matrix assembly, Gauss integration, boundary conditions (penalisation vs.&nbsp;Lagrange Multipliers), and displacement/energy norm convergence rates.</li>
